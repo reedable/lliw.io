@@ -14,7 +14,7 @@ const routes: Router.RouteParameters[] = [
   {
     // Pushed from a colour row inside an expanded palette card. Must stay ahead of
     // the '(.*)' catch-all below, which would otherwise swallow it.
-    path: '/palette/:paletteId/color/:colorIndex/',
+    path: '/palette/:paletteId/color/:colorId/',
     component: ColorPage,
   },
   {

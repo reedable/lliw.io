@@ -13,7 +13,9 @@ import {
   List,
   ListInput,
   ListItem,
+  ListButton,
   Button,
+  f7,
   Icon,
   Searchbar,
   SwipeoutActions,
@@ -52,6 +54,53 @@ const PaletteCard = ({
    * enable() only fires from a click on a .searchbar-enable element, never on focus.
    */
   const [searching, setSearching] = useState(false);
+
+  /*
+   * Edit mode reveals every colour and makes the list sortable. Suspending the
+   * filter is not only the requested behaviour, it is what makes reordering safe:
+   * onSortableSort reports from/to as positions in the *rendered* list, so a drag
+   * while filtered would move the wrong colour.
+   */
+  const [editing, setEditing] = useState(false);
+
+  const toggleEditing = () => {
+    setEditing((was) => {
+      if (!was) {
+        setQuery('');
+        setSearching(false);
+      }
+      return !was;
+    });
+  };
+
+  /*
+   * Deleting an open card can't just unmount it: F7's close() is what restores the
+   * hidden navbar and removes the backdrop. Unmounting while open would strand
+   * both. So close first, then delete once F7 reports the card closed.
+   */
+  // Shape dictated by CardProps['ref'] in framework7-react.
+  const cardRef = useRef<{
+    el: HTMLElement | null;
+    open: () => void;
+    close: () => void;
+  }>(null!);
+  const pendingDelete = useRef(false);
+
+  const deletePalette = () => {
+    f7.dialog.confirm(`Delete “${palette.name}”? This cannot be undone.`, 'Delete palette', () => {
+      pendingDelete.current = true;
+      cardRef.current?.close();
+    });
+  };
+
+  const handleClosed = () => {
+    if (pendingDelete.current) {
+      pendingDelete.current = false;
+      store.dispatch('deletePalette', { id: palette.id });
+      return;
+    }
+    onClosed();
+  };
   // Shape dictated by SearchbarProps['ref'] in framework7-react.
   const searchbarRef = useRef<{
     el: HTMLElement | null;
@@ -64,15 +113,17 @@ const PaletteCard = ({
     searchbarRef.current?.el?.querySelector('input')?.blur();
   };
 
-  // Carry the original index through the filter — removeColor addresses colors by
-  // position in palette.colors, so a filtered-list index would delete the wrong one.
-  const needle = query.trim().toLowerCase();
-  const entries = palette.colors
-    .map((color, index) => ({ color, index }))
-    .filter(({ color }) => !needle || color.toLowerCase().includes(needle));
+  // Matches name or hex, so filtering still works before a colour is named.
+  const needle = editing ? '' : query.trim().toLowerCase();
+  const colors = palette.colors.filter(
+    (c) =>
+      !needle ||
+      c.name.toLowerCase().includes(needle) ||
+      c.value.toLowerCase().includes(needle),
+  );
 
   return (
-    <Card expandable expandableOpened={opened} onCardClosed={onClosed}>
+    <Card ref={cardRef} expandable expandableOpened={opened} onCardClosed={handleClosed}>
       <CardContent padding={false}>
         {/*
           Full-height flex column so the footer can sit at the bottom of a short
@@ -81,12 +132,21 @@ const PaletteCard = ({
         <div className="palette-body">
           <div className="palette-hero">
             <div className="palette-swatches">
-              {palette.colors.map((color, index) => (
-                <div key={index} className="palette-swatch" style={{ backgroundColor: color }} />
+              {palette.colors.map((color) => (
+                <div
+                  key={color.id}
+                  className="palette-swatch"
+                  style={{ backgroundColor: color.value }}
+                />
               ))}
             </div>
             <div className="palette-hero-bar">{palette.name}</div>
-            <Link cardClose className="palette-close" iconIos="f7:xmark" iconMd="material:close" />
+            <div className="palette-hero-actions">
+              <Link href={false} className="palette-edit" onClick={toggleEditing}>
+                {editing ? 'Done' : 'Edit'}
+              </Link>
+              <Link cardClose className="palette-close" iconIos="f7:xmark" iconMd="material:close" />
+            </div>
           </div>
 
           {/* Below the fold: only visible once the card is open. */}
@@ -103,15 +163,39 @@ const PaletteCard = ({
           </List>
 
           <BlockTitle>Colors</BlockTitle>
-          <List strong inset dividersIos>
-            {entries.map(({ color, index }) => (
+          {/*
+            sortableMoveElements={false} keeps F7 from reordering the DOM itself —
+            React stays the only thing that moves rows, so there is no ownership
+            fight like the one swipeout `delete` causes.
+          */}
+          <List
+            strong
+            inset
+            dividersIos
+            sortable={editing}
+            sortableEnabled={editing}
+            sortableMoveElements={false}
+            onSortableSort={(sortData: { from: number; to: number }) =>
+              store.dispatch('reorderColors', {
+                paletteId: palette.id,
+                from: sortData.from,
+                to: sortData.to,
+              })
+            }
+          >
+            {colors.map((color) => (
               <ListItem
-                key={index}
-                swipeout
-                title={color}
-                link={`/palette/${palette.id}/color/${index}/`}
+                key={color.id}
+                swipeout={!editing}
+                title={color.name}
+                after={color.value}
+                link={editing ? undefined : `/palette/${palette.id}/color/${color.id}/`}
               >
-                <div slot="media" className="palette-chip" style={{ backgroundColor: color }} />
+                <div
+                  slot="media"
+                  className="palette-chip"
+                  style={{ backgroundColor: color.value }}
+                />
                 {/*
                   `close`, not `delete`. F7's delete removes the <li> from the DOM
                   itself, which fights React for ownership of a node it still has in
@@ -122,7 +206,12 @@ const PaletteCard = ({
                   <SwipeoutButton
                     close
                     color="red"
-                    onClick={() => store.dispatch('removeColor', { id: palette.id, index })}
+                    onClick={() =>
+                      store.dispatch('removeColor', {
+                        paletteId: palette.id,
+                        colorId: color.id,
+                      })
+                    }
                   >
                     Delete
                   </SwipeoutButton>
@@ -131,13 +220,18 @@ const PaletteCard = ({
             ))}
           </List>
 
-          {entries.length === 0 && (
+          {colors.length === 0 && (
             <Block className="palette-empty">
               {palette.colors.length === 0
                 ? 'No colors yet.'
                 : `No colors match “${query.trim()}”.`}
             </Block>
           )}
+
+          {/* Destructive action last, so it takes a deliberate scroll to reach. */}
+          <List strong inset>
+            <ListButton title="Delete palette" color="red" onClick={deletePalette} />
+          </List>
 
           <div className="palette-footer">
             {/*
@@ -167,7 +261,7 @@ const PaletteCard = ({
               onClick={() =>
                 searching
                   ? exitSearch()
-                  : store.dispatch('addColor', { id: palette.id, color: DEFAULT_COLOR })
+                  : store.dispatch('addColor', { paletteId: palette.id, value: DEFAULT_COLOR })
               }
             >
               <Icon

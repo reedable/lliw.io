@@ -53,6 +53,17 @@
   bottom: var(--lliw-tabbar-gap);
 }
 
+/*
+ * F7 hides a bottom toolbar with translate3d(0, 100%, 0) — exactly its own height.
+ * That clears the pill itself, but --f7-glass-shadow ends in `0 0 25px rgba(...)`,
+ * and a 25px blur around a pill sitting only --lliw-tabbar-gap above the box's
+ * bottom edge still bleeds above the viewport. Visible as the top of the bar
+ * peeking while an expandable card is open. Push it past the blur radius.
+ */
+.toolbar-bottom.toolbar-hidden {
+  transform: translate3d(0, calc(100% + 32px), 0);
+}
+
 .palette-hero {
   position: relative;
   flex: 0 0 auto; /* flex item of .palette-body — must not shrink */
@@ -78,12 +89,14 @@
   font-weight: 600;
 }
 
-/* The close control is meaningless until the card is open. */
-.palette-close {
+/* Edit and close. Both are meaningless until the card is open. */
+.palette-hero-actions {
   position: absolute;
   top: 8px;
   right: 8px;
-  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 12px;
   opacity: 0;
   pointer-events: none;
   transition: opacity 200ms;
@@ -100,14 +113,23 @@
  * Both classes, so the position is right during the opening animation too.
  * --f7-safe-area-top is env(safe-area-inset-top) where supported, else 0px.
  */
-.card-opening .palette-close,
-.card-opened .palette-close {
+.card-opening .palette-hero-actions,
+.card-opened .palette-hero-actions {
   top: calc(8px + var(--f7-safe-area-top));
 }
 
-.card-opened .palette-close {
+.card-opened .palette-hero-actions {
   opacity: 1;
   pointer-events: auto;
+}
+
+.palette-hero-actions .palette-edit,
+.palette-hero-actions .palette-close {
+  color: #fff;
+}
+
+.palette-edit {
+  font-weight: 600;
 }
 
 /*

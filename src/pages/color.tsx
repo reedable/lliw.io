@@ -79,7 +79,7 @@ const Combo = ({ background, foreground, label }: ComboProps) => (
 );
 
 const ColorPage = ({ f7route }: ColorPageProps) => {
-  const { paletteId, colorIndex } = f7route.params;
+  const { paletteId, colorId } = f7route.params;
   const palettes = useStore('palettes') as Palette[];
   const settings = useStore('settings') as Settings;
 
@@ -88,11 +88,11 @@ const ColorPage = ({ f7route }: ColorPageProps) => {
   const [filter, setFilter] = useState<Filter>(settings.defaultConformance);
 
   const palette = palettes.find((p) => p.id === paletteId);
-  const color = palette?.colors[Number(colorIndex)];
+  const color = palette?.colors.find((c) => c.id === colorId);
 
   // Local draft so the field can hold half-typed values; the store only sees
   // complete ones. Declared before the guard below to keep hook order stable.
-  const [draft, setDraft] = useState(color ?? '');
+  const [draft, setDraft] = useState(color?.value ?? '');
 
   // The colour can vanish while this page is open — deleted via swipe on the card
   // underneath, or the palette itself removed.
@@ -111,8 +111,9 @@ const ColorPage = ({ f7route }: ColorPageProps) => {
    * contains #FFFFFF does not produce a duplicate tile, and the colour itself is
    * dropped — pairing it with itself renders an unreadable solid block.
    */
-  const self = color.toLowerCase();
-  const pool = settings.showBaseColors ? [...palette.colors, ...BASE_COLORS] : palette.colors;
+  const self = color.value.toLowerCase();
+  const paletteValues = palette.colors.map((c) => c.value);
+  const pool = settings.showBaseColors ? [...paletteValues, ...BASE_COLORS] : paletteValues;
   const counterparts = Array.from(new Set(pool.map((c) => c.toLowerCase()))).filter(
     (c) => c !== self,
   );
@@ -122,11 +123,13 @@ const ColorPage = ({ f7route }: ColorPageProps) => {
    * colorjs.io's own WCAG21 source notes it "does not matter which is foreground
    * and which is background" — so both sections below filter identically.
    */
-  const visible = counterparts.filter((c) => (contrastRatio(color, c) ?? 0) >= MIN_RATIO[filter]);
+  const visible = counterparts.filter(
+    (c) => (contrastRatio(color.value, c) ?? 0) >= MIN_RATIO[filter],
+  );
 
   return (
     <Page name="color" noToolbar>
-      <Navbar title={color} subtitle={palette.name} backLink="Back" />
+      <Navbar title={color.name} subtitle={palette.name} backLink="Back" />
 
       <Toolbar tabbar bottom>
         {/*
@@ -150,9 +153,22 @@ const ColorPage = ({ f7route }: ColorPageProps) => {
         </ToolbarPane>
       </Toolbar>
 
-      <div className="color-hero" style={{ backgroundColor: color }} />
+      <div className="color-hero" style={{ backgroundColor: color.value }} />
 
       <List strong inset>
+        <ListInput
+          type="text"
+          label="Name"
+          placeholder="Color name"
+          value={color.name}
+          onInput={(e: any) =>
+            store.dispatch('renameColor', {
+              paletteId: palette.id,
+              colorId: color.id,
+              name: e.target.value,
+            })
+          }
+        />
         <ListInput
           type="text"
           label="Hex"
@@ -164,7 +180,11 @@ const ColorPage = ({ f7route }: ColorPageProps) => {
             // Only commit parseable values, so half-typed input like "#2a" never
             // reaches the store and blanks the hero and the tiles.
             if (HEX.test(next)) {
-              store.dispatch('setColor', { id: palette.id, index: Number(colorIndex), color: next });
+              store.dispatch('setColorValue', {
+                paletteId: palette.id,
+                colorId: color.id,
+                value: next,
+              });
             }
           }}
         />
@@ -172,24 +192,25 @@ const ColorPage = ({ f7route }: ColorPageProps) => {
 
       {visible.length === 0 ? (
         <Block strong inset className="color-empty">
-          No pairing in this palette reaches {filter} ({MIN_RATIO[filter]}:1) against {color}.
+          No pairing in this palette reaches {filter} ({MIN_RATIO[filter]}:1) against{' '}
+          {color.value}.
         </Block>
       ) : (
         <>
-          <BlockTitle>{color} as foreground</BlockTitle>
+          <BlockTitle>{color.name} as foreground</BlockTitle>
           <Block>
             <div className="color-combo-grid">
               {visible.map((bg) => (
-                <Combo key={`fg-${bg}`} background={bg} foreground={color} label={bg} />
+                <Combo key={`fg-${bg}`} background={bg} foreground={color.value} label={bg} />
               ))}
             </div>
           </Block>
 
-          <BlockTitle>{color} as background</BlockTitle>
+          <BlockTitle>{color.name} as background</BlockTitle>
           <Block>
             <div className="color-combo-grid">
               {visible.map((fg) => (
-                <Combo key={`bg-${fg}`} background={color} foreground={fg} label={fg} />
+                <Combo key={`bg-${fg}`} background={color.value} foreground={fg} label={fg} />
               ))}
             </div>
           </Block>

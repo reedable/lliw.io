@@ -6,7 +6,7 @@ import store from '../js/store';
 const MyApp = () => {
   // Framework7 Parameters
   const f7params = {
-    name: 'Palette Studio', // App name
+    name: 'lliw.io', // App name
     theme: 'auto', // Automatic theme detection
 
     // App store

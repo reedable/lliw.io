@@ -1,4 +1,4 @@
-# Palette Studio
+# lliw.io
 
 ## Framework7 CLI Options
 
@@ -10,7 +10,7 @@ Framework7 app created with following options:
     "web",
     "pwa"
   ],
-  "name": "Palette Studio",
+  "name": "lliw.io",
   "framework": "react",
   "template": "tabs",
   "bundler": "vite",

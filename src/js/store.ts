@@ -72,29 +72,71 @@ const saveSettings = (settings: Settings) => {
   }
 };
 
+const PALETTES_KEY = 'palette.palettes';
+
+/** Used only when storage has never been written — not when it holds an empty list. */
+const SEED_PALETTES: Palette[] = [
+  {
+    id: 'p1',
+    name: 'Dusk',
+    colors: ['#2b2d42', '#8d99ae', '#edf2f4', '#ef233c', '#d90429'],
+  },
+  {
+    id: 'p2',
+    name: 'Citrus',
+    colors: ['#fec89a', '#ffd7ba', '#fec5bb', '#f8edeb', '#d8e2dc'],
+  },
+  {
+    id: 'p3',
+    name: 'Forest',
+    colors: ['#264653', '#2a9d8f', '#e9c46a', '#f4a261', '#e76f51'],
+  },
+];
+
+const isPalette = (value: unknown): value is Palette => {
+  if (typeof value !== 'object' || value === null) return false;
+  const p = value as Record<string, unknown>;
+  return (
+    typeof p.id === 'string' &&
+    typeof p.name === 'string' &&
+    Array.isArray(p.colors) &&
+    p.colors.every((c) => typeof c === 'string')
+  );
+};
+
+/*
+ * Malformed entries are dropped individually rather than discarding the whole set,
+ * so one bad record written by an older version does not cost the user every
+ * palette they have. An empty stored array is honoured as empty — the seeds are
+ * only a first-run value, not a floor.
+ */
+const loadPalettes = (): Palette[] => {
+  try {
+    const raw = localStorage.getItem(PALETTES_KEY);
+    if (raw === null) return SEED_PALETTES;
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return SEED_PALETTES;
+    return parsed.filter(isPalette);
+  } catch {
+    return SEED_PALETTES;
+  }
+};
+
+const savePalettes = (palettes: Palette[]) => {
+  try {
+    localStorage.setItem(PALETTES_KEY, JSON.stringify(palettes));
+  } catch {
+    // Storage can be unavailable or full; the in-memory state is still correct.
+  }
+};
+
 interface StoreCtx {
   state: AppState;
 }
 
 const store = createStore({
   state: {
-    palettes: [
-      {
-        id: 'p1',
-        name: 'Dusk',
-        colors: ['#2b2d42', '#8d99ae', '#edf2f4', '#ef233c', '#d90429'],
-      },
-      {
-        id: 'p2',
-        name: 'Citrus',
-        colors: ['#fec89a', '#ffd7ba', '#fec5bb', '#f8edeb', '#d8e2dc'],
-      },
-      {
-        id: 'p3',
-        name: 'Forest',
-        colors: ['#264653', '#2a9d8f', '#e9c46a', '#f4a261', '#e76f51'],
-      },
-    ],
+    palettes: loadPalettes(),
     settings: loadSettings(),
   } as AppState,
   getters: {
@@ -113,14 +155,17 @@ const store = createStore({
     addPalette({ state }: StoreCtx, { id }: { id: string }) {
       const newPalette: Palette = { id, name: 'Untitled', colors: ['#3b82f6'] };
       state.palettes = [newPalette, ...state.palettes];
+      savePalettes(state.palettes);
     },
     renamePalette({ state }: StoreCtx, { id, name }: { id: string; name: string }) {
       state.palettes = state.palettes.map((p) => (p.id === id ? { ...p, name } : p));
+      savePalettes(state.palettes);
     },
     addColor({ state }: StoreCtx, { id, color }: { id: string; color: string }) {
       state.palettes = state.palettes.map((p) =>
         p.id === id ? { ...p, colors: [...p.colors, color] } : p,
       );
+      savePalettes(state.palettes);
     },
     setColor(
       { state }: StoreCtx,
@@ -129,11 +174,13 @@ const store = createStore({
       state.palettes = state.palettes.map((p) =>
         p.id === id ? { ...p, colors: p.colors.map((c, i) => (i === index ? color : c)) } : p,
       );
+      savePalettes(state.palettes);
     },
     removeColor({ state }: StoreCtx, { id, index }: { id: string; index: number }) {
       state.palettes = state.palettes.map((p) =>
         p.id === id ? { ...p, colors: p.colors.filter((_, i) => i !== index) } : p,
       );
+      savePalettes(state.palettes);
     },
   },
 })

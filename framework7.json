@@ -3,7 +3,7 @@
     "web",
     "pwa"
   ],
-  "name": "Palette Studio",
+  "name": "lliw.io",
   "framework": "react",
   "template": "tabs",
   "bundler": "vite",

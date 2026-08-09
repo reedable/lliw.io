@@ -198,7 +198,7 @@ const HomePage = () => {
   return (
     <Page name="home">
       <Navbar large>
-        <NavTitle>Palette Studio</NavTitle>
+        <NavTitle>lliw.io</NavTitle>
         <NavRight>
           <Link
             iconIos="f7:plus"
@@ -207,7 +207,7 @@ const HomePage = () => {
             onClick={addPalette}
           />
         </NavRight>
-        <NavTitleLarge>Palette Studio</NavTitleLarge>
+        <NavTitleLarge>lliw.io</NavTitleLarge>
       </Navbar>
 
       {palettes.map((palette) => (

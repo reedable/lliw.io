@@ -10,8 +10,28 @@
   --palette-hero-height: 300px;
 }
 
+/*
+ * Framework7 bug (9.1.2): opening an expandable card calls navbar.hide(), which
+ * adds `navbar-hidden navbar-large-hidden` to the .navbar element. `.navbar-hidden`
+ * only translates up by --f7-navbar-height, but `.navbar .title-large` is
+ * absolutely positioned at `top: 100%`, so the large title stays on screen.
+ *
+ * F7 means to collapse it: it ships
+ *   .navbar-large-hidden .navbar-large { --f7-navbar-large-collapse-progress: 1 }
+ * but that is a *descendant* selector and both classes sit on the same element,
+ * so it never matches. Restated as a compound selector it works, and
+ * title-large-text translates up with the navbar exactly as when scroll-collapsed.
+ *
+ * Only bites when the navbar is hidden while still expanded; once scrolled,
+ * .navbar-large-collapsed has already set the progress to 1.
+ */
+.navbar-large-hidden.navbar-large {
+  --f7-navbar-large-collapse-progress: 1;
+}
+
 .palette-hero {
   position: relative;
+  flex: 0 0 auto; /* flex item of .palette-body — must not shrink */
   height: var(--palette-hero-height);
   display: flex;
   flex-direction: column;
@@ -50,6 +70,38 @@
   pointer-events: auto;
 }
 
+.color-hero {
+  height: 220px;
+}
+
+.color-combo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+}
+
+.color-combo {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 92px;
+  padding: 12px;
+  border-radius: 12px;
+  /* Inset so a tile the same colour as the page still reads as a tile. */
+  box-shadow: inset 0 0 0 0.5px rgba(128, 128, 128, 0.4);
+}
+
+.color-combo-sample {
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.color-combo-label {
+  font-size: 12px;
+}
+
 .palette-chip {
   width: 28px;
   height: 28px;
@@ -57,21 +109,58 @@
   border: 1px solid rgba(0, 0, 0, 0.12);
 }
 
-.palette-add {
+.palette-empty {
+  opacity: 0.55;
+}
+
+/*
+ * `.card-content` is height:100vh and becomes the scroller when the card opens, so
+ * this wrapper stretches to it. margin-top:auto on the footer parks it at the
+ * bottom when the content is short; position:sticky pins it to the viewport bottom
+ * once the content overflows. position:fixed is not an option — card.js keeps an
+ * inline transform on the open card, which makes it the containing block.
+ */
+.palette-body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+/*
+ * Notes-style floating bar: no bar at all. The container is transparent, and the
+ * two children are the visible elements — F7's iOS searchbar input is already a
+ * glass pill (--f7-searchbar-input-border-radius is 44px, background
+ * --f7-glass-bg-color), and the button below is given the same glass treatment as
+ * a circle. Previously this had an opaque --f7-bars-bg-color background, which
+ * covered the pill and read as a solid toolbar instead.
+ */
+.palette-footer {
+  margin-top: auto;
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
   display: flex;
   align-items: center;
   gap: 12px;
-}
-
-.palette-add input[type='color'] {
-  width: 44px;
-  height: 36px;
-  padding: 0;
-  border: 1px solid rgba(0, 0, 0, 0.15);
-  border-radius: 8px;
+  padding: 8px 16px calc(8px + var(--f7-safe-area-bottom, 0px));
   background: none;
 }
 
-.palette-add .button {
+/* Searchbar brings its own input styling; it only needs to flex here. */
+.palette-search {
   flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Matches the search pill's height so the two sit on a common baseline. */
+.palette-footer .palette-add {
+  flex: 0 0 auto;
+  width: var(--f7-searchbar-input-height);
+  height: var(--f7-searchbar-input-height);
+  padding: 0;
+  border-radius: 50%;
+  background-color: var(--f7-glass-bg-color);
+  box-shadow: var(--f7-glass-shadow);
+  backdrop-filter: saturate(180%) blur(16px);
+  -webkit-backdrop-filter: saturate(180%) blur(16px);
 }

@@ -2,6 +2,7 @@
 import type { Router } from 'framework7/types';
 
 import HomePage from '../pages/home';
+import ColorPage from '../pages/color';
 import AboutPage from '../pages/about';
 import FormPage from '../pages/form';
 import CatalogPage from '../pages/catalog';
@@ -16,6 +17,12 @@ const routes: Router.RouteParameters[] = [
   {
     path: '/',
     component: HomePage,
+  },
+  {
+    // Pushed from a colour row inside an expanded palette card. Must stay ahead of
+    // the '(.*)' catch-all below, which would otherwise swallow it.
+    path: '/palette/:paletteId/color/:colorIndex/',
+    component: ColorPage,
   },
   {
     path: '/about/',

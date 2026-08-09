@@ -65,6 +65,22 @@
   transition: opacity 200ms;
 }
 
+/*
+ * Open, the card fills the viewport and the hero starts at y=0, under the status
+ * bar (index.html sets viewport-fit=cover). Offset by the inset, matching what F7
+ * does for its own card headers:
+ *   .card-expandable.card-opening .card-header,
+ *   .card-expandable.card-opened  .card-header {
+ *     padding-top: calc(... + var(--f7-safe-area-top));
+ *   }
+ * Both classes, so the position is right during the opening animation too.
+ * --f7-safe-area-top is env(safe-area-inset-top) where supported, else 0px.
+ */
+.card-opening .palette-close,
+.card-opened .palette-close {
+  top: calc(8px + var(--f7-safe-area-top));
+}
+
 .card-opened .palette-close {
   opacity: 1;
   pointer-events: auto;

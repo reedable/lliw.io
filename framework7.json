@@ -1,0 +1,19 @@
+{
+  "type": [
+    "web",
+    "pwa"
+  ],
+  "name": "Palette Studio",
+  "framework": "react",
+  "template": "tabs",
+  "bundler": "vite",
+  "cssPreProcessor": false,
+  "theming": {
+    "customColor": false,
+    "color": "#007aff",
+    "darkMode": false,
+    "iconFonts": true
+  },
+  "customBuild": false,
+  "cwd": "/Users/Shared/Development/palette"
+}

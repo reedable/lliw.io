@@ -70,8 +70,37 @@
   pointer-events: auto;
 }
 
+/*
+ * Plain buttons, not F7 tab-links — see the comment in color.tsx.
+ *
+ * Selectors are `.toolbar .color-filter` (0,2,0) on purpose: `.toolbar a` is
+ * (0,1,1) and already paints every toolbar link in --f7-theme-color, so a bare
+ * `.color-filter-active { color: ... }` both loses on specificity and would be the
+ * same colour as the unselected ones anyway. The selected tab has to be readable
+ * at a glance — it reports which conformance level is on screen.
+ */
+.toolbar .color-filter {
+  flex: 1 1 0;
+  justify-content: center;
+  border-radius: 8px;
+  font-weight: 400;
+  color: var(--f7-tabbar-link-inactive-color);
+  opacity: 0.55;
+}
+
+.toolbar .color-filter-active {
+  font-weight: 700;
+  color: var(--f7-tabbar-link-active-color);
+  background-color: rgba(128, 128, 128, 0.16);
+  opacity: 1;
+}
+
 .color-hero {
   height: 220px;
+}
+
+.color-empty {
+  opacity: 0.6;
 }
 
 .color-combo-grid {
@@ -83,23 +112,30 @@
 .color-combo {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  gap: 8px;
-  min-height: 92px;
+  gap: 6px;
   padding: 12px;
   border-radius: 12px;
   /* Inset so a tile the same colour as the page still reads as a tile. */
   box-shadow: inset 0 0 0 0.5px rgba(128, 128, 128, 0.4);
 }
 
-.color-combo-sample {
+.color-combo-large {
   font-size: 24px;
   font-weight: 600;
   line-height: 1;
 }
 
+.color-combo-small {
+  font-size: 14px;
+  line-height: 1.2;
+}
+
 .color-combo-label {
   font-size: 12px;
+  opacity: 0.6;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .palette-chip {

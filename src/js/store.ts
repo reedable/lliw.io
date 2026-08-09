@@ -92,6 +92,14 @@ const store = createStore({
         p.id === id ? { ...p, colors: [...p.colors, color] } : p,
       );
     },
+    setColor(
+      { state }: StoreCtx,
+      { id, index, color }: { id: string; index: number; color: string },
+    ) {
+      state.palettes = state.palettes.map((p) =>
+        p.id === id ? { ...p, colors: p.colors.map((c, i) => (i === index ? color : c)) } : p,
+      );
+    },
     removeColor({ state }: StoreCtx, { id, index }: { id: string; index: number }) {
       state.palettes = state.palettes.map((p) =>
         p.id === id ? { ...p, colors: p.colors.filter((_, i) => i !== index) } : p,

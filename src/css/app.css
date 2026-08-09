@@ -29,6 +29,19 @@
   --f7-navbar-large-collapse-progress: 1;
 }
 
+/*
+ * F7 reserves the full home-indicator inset as empty space below the tab bar:
+ *   .toolbar-bottom          { height: calc(var(--f7-toolbar-height) + var(--f7-safe-area-bottom)) }
+ *   .toolbar-bottom .toolbar-inner { top: 0; bottom: var(--f7-safe-area-bottom) }
+ * so the glass pill floats a whole inset (34pt here) above the screen edge.
+ *
+ * This is the only number that moves it. Larger = higher, 0 = flush with the edge
+ * and overlapping the home indicator.
+ */
+.toolbar-bottom .toolbar-inner {
+  bottom: 0;
+}
+
 .palette-hero {
   position: relative;
   flex: 0 0 auto; /* flex item of .palette-body — must not shrink */

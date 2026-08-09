@@ -18,7 +18,10 @@ const MyApp = () => {
     serviceWorker:
       process.env.NODE_ENV === 'production'
         ? {
-            path: '/service-worker.js',
+            // Must match the Pages subpath: this path also determines the service
+            // worker's scope, and a worker at the domain root could not control
+            // pages under /lliw.io/.
+            path: '/lliw.io/service-worker.js',
           }
         : {},
   };

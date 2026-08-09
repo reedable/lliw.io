@@ -14,7 +14,10 @@ export default async () => {
 
     ],
     root: SRC_DIR,
-    base: '',
+    // GitHub Pages serves this repo at https://reedable.github.io/lliw.io/.
+    // Kept the same in dev so the dev server URL matches production; vite prints
+    // http://localhost:5173/lliw.io/ on start.
+    base: '/lliw.io/',
     publicDir: PUBLIC_DIR,
     build: {
       outDir: BUILD_DIR,

@@ -3,40 +3,41 @@
   "short_name": "lliw.io",
   "description": "lliw.io",
   "lang": "en-US",
-  "start_url": "/",
+  "start_url": "/lliw.io/",
   "display": "standalone",
   "background_color": "#EE350F",
   "theme_color": "#EE350F",
   "icons": [
     {
-      "src": "/icons/128x128.png",
+      "src": "/lliw.io/icons/128x128.png",
       "sizes": "128x128",
       "type": "image/png"
     },
     {
-      "src": "/icons/144x144.png",
+      "src": "/lliw.io/icons/144x144.png",
       "sizes": "144x144",
       "type": "image/png"
     },
     {
-      "src": "/icons/152x152.png",
+      "src": "/lliw.io/icons/152x152.png",
       "sizes": "152x152",
       "type": "image/png"
     },
     {
-      "src": "/icons/192x192.png",
+      "src": "/lliw.io/icons/192x192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/icons/256x256.png",
+      "src": "/lliw.io/icons/256x256.png",
       "sizes": "256x256",
       "type": "image/png"
     },
     {
-      "src": "/icons/512x512.png",
+      "src": "/lliw.io/icons/512x512.png",
       "sizes": "512x512",
       "type": "image/png"
     }
-  ]
+  ],
+  "scope": "/lliw.io/"
 }

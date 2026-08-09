@@ -1,12 +1,6 @@
 
 import { createStore } from 'framework7/lite';
 
-export interface Product {
-  id: string;
-  title: string;
-  description: string;
-}
-
 export interface Palette {
   id: string;
   name: string;
@@ -22,34 +16,68 @@ export interface Palette {
 export const createPaletteId = () =>
   `p${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`;
 
-export interface AppState {
-  products: Product[];
-  palettes: Palette[];
+/** The conformance tab the colour page opens on. */
+export type ConformanceSetting = 'AAA' | 'AA' | 'A';
+
+export interface Settings {
+  defaultConformance: ConformanceSetting;
+  showBaseColors: boolean;
 }
+
+interface AppState {
+  palettes: Palette[];
+  settings: Settings;
+}
+
+const SETTINGS_KEY = 'palette.settings';
+
+const DEFAULT_SETTINGS: Settings = {
+  defaultConformance: 'AAA',
+  showBaseColors: true,
+};
+
+/*
+ * Reads back field by field rather than trusting the parsed object: whatever is in
+ * localStorage was written by a previous version of this app and is not guaranteed
+ * to match the current Settings shape. An unknown conformance value would other-
+ * wise reach the colour page as a filter with no MIN_RATIO entry.
+ */
+const loadSettings = (): Settings => {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (!raw) return DEFAULT_SETTINGS;
+    const parsed = JSON.parse(raw) as Partial<Settings>;
+    return {
+      defaultConformance: (['AAA', 'AA', 'A'] as const).includes(
+        parsed.defaultConformance as ConformanceSetting,
+      )
+        ? (parsed.defaultConformance as ConformanceSetting)
+        : DEFAULT_SETTINGS.defaultConformance,
+      showBaseColors:
+        typeof parsed.showBaseColors === 'boolean'
+          ? parsed.showBaseColors
+          : DEFAULT_SETTINGS.showBaseColors,
+    };
+  } catch {
+    // Unreadable or unparseable storage should not stop the app booting.
+    return DEFAULT_SETTINGS;
+  }
+};
+
+const saveSettings = (settings: Settings) => {
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  } catch {
+    // Storage can be unavailable or full; the in-memory state is still correct.
+  }
+};
 
 interface StoreCtx {
   state: AppState;
 }
 
 const store = createStore({
-  state: <AppState>{
-    products: [
-      {
-        id: '1',
-        title: 'Apple iPhone 8',
-        description: 'Lorem ipsum dolor sit amet, consectetur adipisicing elit. Nisi tempora similique reiciendis, error nesciunt vero, blanditiis pariatur dolor, minima sed sapiente rerum, dolorem corrupti hic modi praesentium unde saepe perspiciatis.'
-      },
-      {
-        id: '2',
-        title: 'Apple iPhone 8 Plus',
-        description: 'Velit odit autem modi saepe ratione totam minus, aperiam, labore quia provident temporibus quasi est ut aliquid blanditiis beatae suscipit odio vel! Nostrum porro sunt sint eveniet maiores, dolorem itaque!'
-      },
-      {
-        id: '3',
-        title: 'Apple iPhone X',
-        description: 'Expedita sequi perferendis quod illum pariatur aliquam, alias laboriosam! Vero blanditiis placeat, mollitia necessitatibus reprehenderit. Labore dolores amet quos, accusamus earum asperiores officiis assumenda optio architecto quia neque, quae eum.'
-      },
-    ],
+  state: {
     palettes: [
       {
         id: 'p1',
@@ -67,18 +95,20 @@ const store = createStore({
         colors: ['#264653', '#2a9d8f', '#e9c46a', '#f4a261', '#e76f51'],
       },
     ],
-  },
+    settings: loadSettings(),
+  } as AppState,
   getters: {
-    products({ state }: StoreCtx) {
-      return state.products;
-    },
     palettes({ state }: StoreCtx) {
       return state.palettes;
     },
+    settings({ state }: StoreCtx) {
+      return state.settings;
+    },
   },
   actions: {
-    addProduct({ state }: StoreCtx, product: Product) {
-      state.products = [...state.products, product];
+    setSettings({ state }: StoreCtx, patch: Partial<Settings>) {
+      state.settings = { ...state.settings, ...patch };
+      saveSettings(state.settings);
     },
     addPalette({ state }: StoreCtx, { id }: { id: string }) {
       const newPalette: Palette = { id, name: 'Untitled', colors: ['#3b82f6'] };

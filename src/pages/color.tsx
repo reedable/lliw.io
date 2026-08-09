@@ -13,7 +13,7 @@ import {
 } from 'framework7-react';
 import type { Router } from 'framework7/types';
 import store from '../js/store';
-import type { Palette } from '../js/store';
+import type { Palette, Settings } from '../js/store';
 import { contrastRatio } from '../js/contrast';
 
 /** #rgb or #rrggbb. Anything else is treated as still being typed. */
@@ -81,7 +81,11 @@ const Combo = ({ background, foreground, label }: ComboProps) => (
 const ColorPage = ({ f7route }: ColorPageProps) => {
   const { paletteId, colorIndex } = f7route.params;
   const palettes = useStore('palettes') as Palette[];
-  const [filter, setFilter] = useState<Filter>('AAA');
+  const settings = useStore('settings') as Settings;
+
+  // Seeds the initial tab only. Changing the setting later does not retroactively
+  // move a tab the user has already switched on this page.
+  const [filter, setFilter] = useState<Filter>(settings.defaultConformance);
 
   const palette = palettes.find((p) => p.id === paletteId);
   const color = palette?.colors[Number(colorIndex)];
@@ -102,15 +106,16 @@ const ColorPage = ({ f7route }: ColorPageProps) => {
   }
 
   /*
-   * Counterparts to pair this colour with: the rest of the palette plus black and
-   * white. Compared lowercased so a palette that already contains #FFFFFF does not
-   * produce a duplicate tile, and the colour itself is dropped — pairing it with
-   * itself renders an unreadable solid block.
+   * Counterparts to pair this colour with: the rest of the palette, plus black and
+   * white when the setting allows. Compared lowercased so a palette that already
+   * contains #FFFFFF does not produce a duplicate tile, and the colour itself is
+   * dropped — pairing it with itself renders an unreadable solid block.
    */
   const self = color.toLowerCase();
-  const counterparts = Array.from(
-    new Set([...palette.colors, ...BASE_COLORS].map((c) => c.toLowerCase())),
-  ).filter((c) => c !== self);
+  const pool = settings.showBaseColors ? [...palette.colors, ...BASE_COLORS] : palette.colors;
+  const counterparts = Array.from(new Set(pool.map((c) => c.toLowerCase()))).filter(
+    (c) => c !== self,
+  );
 
   /*
    * One ratio per counterpart, not per tile: the WCAG 2.x ratio is symmetric —

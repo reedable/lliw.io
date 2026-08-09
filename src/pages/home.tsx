@@ -2,7 +2,6 @@ import { useRef, useState } from 'react';
 import {
   Page,
   Navbar,
-  NavLeft,
   NavTitle,
   NavTitleLarge,
   NavRight,
@@ -199,9 +198,6 @@ const HomePage = () => {
   return (
     <Page name="home">
       <Navbar large>
-        <NavLeft>
-          <Link iconIos="f7:menu" iconMd="material:menu" panelOpen="left" />
-        </NavLeft>
         <NavTitle>Palette Studio</NavTitle>
         <NavRight>
           <Link

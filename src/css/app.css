@@ -1,1 +1,77 @@
 /* Your app custom styles here */
+
+/*
+ * Framework7 hard-codes `.card-expandable { height: 300px }` for the collapsed
+ * state and clips content that is otherwise laid out full-screen. There is no
+ * F7 custom property for it, so mirror the value here; the tablet vars size the
+ * expanded target, not the collapsed card, so this stays constant.
+ */
+:root {
+  --palette-hero-height: 300px;
+}
+
+.palette-hero {
+  position: relative;
+  height: var(--palette-hero-height);
+  display: flex;
+  flex-direction: column;
+}
+
+.palette-swatches {
+  flex: 1 1 auto;
+  display: flex;
+  min-height: 0;
+}
+
+.palette-swatch {
+  flex: 1 1 0;
+}
+
+.palette-hero-bar {
+  flex: 0 0 auto;
+  padding: 12px 16px;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+/* The close control is meaningless until the card is open. */
+.palette-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  color: #fff;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms;
+}
+
+.card-opened .palette-close {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.palette-chip {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.palette-add {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.palette-add input[type='color'] {
+  width: 44px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  background: none;
+}
+
+.palette-add .button {
+  flex: 1 1 auto;
+}

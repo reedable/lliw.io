@@ -11,7 +11,6 @@ import {
   Card,
   CardContent,
   List,
-  ListInput,
   ListItem,
   ListButton,
   Button,
@@ -130,38 +129,48 @@ const PaletteCard = ({
           card via margin-top:auto, and stick to the viewport bottom on a long one.
         */}
         <div className="palette-body">
+          {/*
+            Inside CardContent, because F7 leaves an open card scaled and only
+            counter-scales .card-content — anything outside it renders stretched.
+            Sticky with zero height so it pins to the top of the scroller without
+            occupying a row in the flex column.
+          */}
+          <div className="palette-actions">
+            <Link
+              cardClose
+              className="palette-close"
+              aria-label="Close palette"
+              iconIos="f7:chevron_left"
+              iconMd="material:chevron_left"
+            />
+            <Link href={false} className="palette-edit" onClick={toggleEditing}>
+              {editing ? 'Done' : 'Edit'}
+            </Link>
+          </div>
+
           <div className="palette-hero">
             <div className="palette-swatches">
               {palette.colors.map((color) => (
-                <div
-                  key={color.id}
-                  className="palette-swatch"
-                  style={{ backgroundColor: color.value }}
-                />
+                <div key={color.id} style={{ backgroundColor: color.value }} />
               ))}
             </div>
-            <div className="palette-hero-bar">{palette.name}</div>
-            <div className="palette-hero-actions">
-              <Link href={false} className="palette-edit" onClick={toggleEditing}>
-                {editing ? 'Done' : 'Edit'}
-              </Link>
-              <Link cardClose className="palette-close" iconIos="f7:xmark" iconMd="material:close" />
-            </div>
-          </div>
-
-          {/* Below the fold: only visible once the card is open. */}
-          <BlockTitle>Name</BlockTitle>
-          <List strong inset>
-            <ListInput
+            {/*
+              The palette name is edited here directly. pointer-events is off
+              until the card opens (see app.css) so that tapping a collapsed card
+              still opens it rather than focusing the field.
+            */}
+            <input
               type="text"
               placeholder="Palette name"
+              aria-label="Palette name"
               value={palette.name}
-              onInput={(e: any) =>
+              onChange={(e) =>
                 store.dispatch('renamePalette', { id: palette.id, name: e.target.value })
               }
             />
-          </List>
+          </div>
 
+          {/* Below the fold: only visible once the card is open. */}
           <BlockTitle>Colors</BlockTitle>
           {/*
             sortableMoveElements={false} keeps F7 from reordering the DOM itself —
@@ -272,6 +281,7 @@ const PaletteCard = ({
           </div>
         </div>
       </CardContent>
+
     </Card>
   );
 };

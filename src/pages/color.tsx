@@ -1,4 +1,8 @@
 import { useState } from 'react';
+import { Swiper, SwiperSlide } from 'swiper/react';
+import { Pagination } from 'swiper/modules';
+import 'swiper/css';
+import 'swiper/css/pagination';
 import {
   Page,
   Navbar,
@@ -64,17 +68,28 @@ const MIN_RATIO: Record<Filter, number> = {
  * attached, so nothing else changes.
  */
 
+/** A colour to pair against. `name` is absent for black and white. */
+interface Counterpart {
+  value: string;
+  name?: string;
+}
+
 interface ComboProps {
   background: string;
   foreground: string;
-  label: string;
+  /** Absent for black and white, which are not palette members. */
+  label?: string;
+  hex: string;
 }
 
-const Combo = ({ background, foreground, label }: ComboProps) => (
+const Combo = ({ background, foreground, label, hex }: ComboProps) => (
   <div className="color-combo" style={{ backgroundColor: background, color: foreground }}>
     <span className="color-combo-large">Aa</span>
     <span className="color-combo-small">Small text sample</span>
-    <span className="color-combo-label">{label}</span>
+    <span className="color-combo-label">
+      {label && <b>{label}</b>}
+      {hex}
+    </span>
   </div>
 );
 
@@ -87,12 +102,24 @@ const ColorPage = ({ f7route }: ColorPageProps) => {
   // move a tab the user has already switched on this page.
   const [filter, setFilter] = useState<Filter>(settings.defaultConformance);
 
-  const palette = palettes.find((p) => p.id === paletteId);
-  const color = palette?.colors.find((c) => c.id === colorId);
+  /*
+   * The route param is only the entry point. Swiping the hero changes which
+   * colour the whole page shows without navigating — F7 runs with
+   * browserHistory: false, so there is no address bar to leave stale.
+   */
+  const [activeId, setActiveId] = useState(colorId ?? '');
 
-  // Local draft so the field can hold half-typed values; the store only sees
-  // complete ones. Declared before the guard below to keep hook order stable.
-  const [draft, setDraft] = useState(color?.value ?? '');
+  const palette = palettes.find((p) => p.id === paletteId);
+  const color =
+    palette?.colors.find((c) => c.id === activeId) ??
+    palette?.colors.find((c) => c.id === colorId);
+
+  /*
+   * Half-typed hex lives here rather than in the store. Tagged with the colour it
+   * belongs to, so swiping to another colour shows that colour's value instead of
+   * carrying the previous field's text across.
+   */
+  const [draft, setDraft] = useState<{ id: string; text: string } | null>(null);
 
   // The colour can vanish while this page is open — deleted via swipe on the card
   // underneath, or the palette itself removed.
@@ -112,11 +139,23 @@ const ColorPage = ({ f7route }: ColorPageProps) => {
    * dropped — pairing it with itself renders an unreadable solid block.
    */
   const self = color.value.toLowerCase();
-  const paletteValues = palette.colors.map((c) => c.value);
-  const pool = settings.showBaseColors ? [...paletteValues, ...BASE_COLORS] : paletteValues;
-  const counterparts = Array.from(new Set(pool.map((c) => c.toLowerCase()))).filter(
-    (c) => c !== self,
-  );
+  const seen = new Set<string>([self]);
+  const counterparts: Counterpart[] = [];
+
+  // Palette colours first, so they keep their names; black and white have none.
+  palette.colors.forEach((c) => {
+    const value = c.value.toLowerCase();
+    if (seen.has(value)) return;
+    seen.add(value);
+    counterparts.push({ value, name: c.name });
+  });
+  if (settings.showBaseColors) {
+    BASE_COLORS.forEach((value) => {
+      if (seen.has(value)) return;
+      seen.add(value);
+      counterparts.push({ value });
+    });
+  }
 
   /*
    * One ratio per counterpart, not per tile: the WCAG 2.x ratio is symmetric —
@@ -124,7 +163,7 @@ const ColorPage = ({ f7route }: ColorPageProps) => {
    * and which is background" — so both sections below filter identically.
    */
   const visible = counterparts.filter(
-    (c) => (contrastRatio(color.value, c) ?? 0) >= MIN_RATIO[filter],
+    (c) => (contrastRatio(color.value, c.value) ?? 0) >= MIN_RATIO[filter],
   );
 
   return (
@@ -153,7 +192,31 @@ const ColorPage = ({ f7route }: ColorPageProps) => {
         </ToolbarPane>
       </Toolbar>
 
-      <div className="color-hero" style={{ backgroundColor: color.value }} />
+      {/*
+        swiper/react gives real components, so React owns the DOM here — no
+        imperative init and no ownership fight. realIndex is used rather than
+        activeIndex because loop mode inserts duplicate slides at both ends.
+      */}
+      <Swiper
+        className="color-hero"
+        /* Only the value; the contrasting colour is derived in CSS from this. */
+        style={{ '--hero-color': color.value } as React.CSSProperties}
+        modules={[Pagination]}
+        pagination={{ clickable: true }}
+        initialSlide={Math.max(
+          0,
+          palette.colors.findIndex((c) => c.id === color.id),
+        )}
+        loop={palette.colors.length > 1}
+        onSlideChange={(swiper) => {
+          const next = palette.colors[swiper.realIndex];
+          if (next) setActiveId(next.id);
+        }}
+      >
+        {palette.colors.map((c) => (
+          <SwiperSlide key={c.id} style={{ backgroundColor: c.value }} />
+        ))}
+      </Swiper>
 
       <List strong inset>
         <ListInput
@@ -173,10 +236,10 @@ const ColorPage = ({ f7route }: ColorPageProps) => {
           type="text"
           label="Hex"
           placeholder="#000000"
-          value={draft}
+          value={draft && draft.id === color.id ? draft.text : color.value}
           onInput={(e: any) => {
             const next = e.target.value;
-            setDraft(next);
+            setDraft({ id: color.id, text: next });
             // Only commit parseable values, so half-typed input like "#2a" never
             // reaches the store and blanks the hero and the tiles.
             if (HEX.test(next)) {
@@ -200,8 +263,14 @@ const ColorPage = ({ f7route }: ColorPageProps) => {
           <BlockTitle>{color.name} as foreground</BlockTitle>
           <Block>
             <div className="color-combo-grid">
-              {visible.map((bg) => (
-                <Combo key={`fg-${bg}`} background={bg} foreground={color.value} label={bg} />
+              {visible.map((c) => (
+                <Combo
+                  key={`fg-${c.value}`}
+                  background={c.value}
+                  foreground={color.value}
+                  label={c.name}
+                  hex={c.value}
+                />
               ))}
             </div>
           </Block>
@@ -209,8 +278,14 @@ const ColorPage = ({ f7route }: ColorPageProps) => {
           <BlockTitle>{color.name} as background</BlockTitle>
           <Block>
             <div className="color-combo-grid">
-              {visible.map((fg) => (
-                <Combo key={`bg-${fg}`} background={color.value} foreground={fg} label={fg} />
+              {visible.map((c) => (
+                <Combo
+                  key={`bg-${c.value}`}
+                  background={color.value}
+                  foreground={c.value}
+                  label={c.name}
+                  hex={c.value}
+                />
               ))}
             </div>
           </Block>

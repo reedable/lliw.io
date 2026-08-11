@@ -240,6 +240,25 @@
 
 .color-hero {
   height: 220px;
+
+  /*
+   * Swiper's active bullet defaults to var(--swiper-theme-color) — blue, which
+   * reads as a UI accent on a page whose whole subject is colour.
+   */
+  /*
+   * Fallback. contrast-color() cannot be transpiled here: --hero-color is set at
+   * runtime from the active slide, and PostCSS resolves at build time — the probe
+   * showed contrast-color(#2b2d42) compiling to #fff while
+   * contrast-color(var(--hero-color)) passed through untouched. So browsers
+   * without native support keep this value.
+   */
+  --swiper-pagination-color: #fff;
+}
+
+@supports (color: contrast-color(red)) {
+  .color-hero {
+    --swiper-pagination-color: contrast-color(var(--hero-color));
+  }
 }
 
 .color-empty {
@@ -273,12 +292,20 @@
   line-height: 1.2;
 }
 
+/*
+ * Name then hex. The <b> carries the name, so the gap is set here rather than
+ * with a literal space in JSX, which strips whitespace between expressions.
+ *
+ * No nowrap/ellipsis: "Brand Red #d71e28" does not fit a 140px tile on one line,
+ * and truncating the hex is worse than wrapping to two.
+ */
 .color-combo-label {
   font-size: 12px;
   opacity: 0.6;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+
+  > b {
+    margin-right: 0.4em;
+  }
 }
 
 .palette-chip {

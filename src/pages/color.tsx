@@ -16,7 +16,7 @@ import {
   useStore,
 } from 'framework7-react';
 import type { Router } from 'framework7/types';
-import store from '../js/store';
+import store, { allColors, findColor } from '../js/store';
 import type { Palette, Settings } from '../js/store';
 import { contrastRatio } from '../js/contrast';
 
@@ -111,8 +111,8 @@ const ColorPage = ({ f7route }: ColorPageProps) => {
 
   const palette = palettes.find((p) => p.id === paletteId);
   const color =
-    palette?.colors.find((c) => c.id === activeId) ??
-    palette?.colors.find((c) => c.id === colorId);
+    (palette && findColor(palette, activeId)) ??
+    (palette && colorId ? findColor(palette, colorId) : undefined);
 
   /*
    * Half-typed hex lives here rather than in the store. Tagged with the colour it
@@ -143,7 +143,9 @@ const ColorPage = ({ f7route }: ColorPageProps) => {
   const counterparts: Counterpart[] = [];
 
   // Palette colours first, so they keep their names; black and white have none.
-  palette.colors.forEach((c) => {
+  const flat = allColors(palette);
+
+  flat.forEach((c) => {
     const value = c.value.toLowerCase();
     if (seen.has(value)) return;
     seen.add(value);
@@ -202,18 +204,24 @@ const ColorPage = ({ f7route }: ColorPageProps) => {
         /* Only the value; the contrasting colour is derived in CSS from this. */
         style={{ '--hero-color': color.value } as React.CSSProperties}
         modules={[Pagination]}
-        pagination={{ clickable: true }}
+        /*
+         * dynamicBullets keeps only a few bullets on screen and slides the window
+         * as you move, instead of rendering one per colour — a palette with twenty
+         * colours would otherwise draw twenty dots across the hero.
+         * dynamicMainBullets is how many stay full-size; the rest taper off.
+         */
+        pagination={{ clickable: true, dynamicBullets: true, dynamicMainBullets: 3 }}
         initialSlide={Math.max(
           0,
-          palette.colors.findIndex((c) => c.id === color.id),
+          flat.findIndex((c) => c.id === color.id),
         )}
-        loop={palette.colors.length > 1}
+        loop={flat.length > 1}
         onSlideChange={(swiper) => {
-          const next = palette.colors[swiper.realIndex];
+          const next = flat[swiper.realIndex];
           if (next) setActiveId(next.id);
         }}
       >
-        {palette.colors.map((c) => (
+        {flat.map((c) => (
           <SwiperSlide key={c.id} style={{ backgroundColor: c.value }} />
         ))}
       </Swiper>

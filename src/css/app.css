@@ -358,6 +358,53 @@
   min-width: 0;
 }
 
+/*
+ * Group headers are rows in the same list as the colours — that is what lets one
+ * sortable move a colour across groups. They read as headings rather than items:
+ * no chip, no chevron, tighter and uppercase.
+ */
+.palette-group {
+  --f7-list-item-title-font-weight: 700;
+  --f7-list-item-title-font-size: 13px;
+
+  > .item-content {
+    min-height: 0;
+
+    > .item-inner {
+      padding-top: 10px;
+      padding-bottom: 6px;
+      opacity: 0.55;
+
+      /*
+       * The heading is an input. Namespace plus tag and attribute, so this is
+       * (0,3,1) and beats Framework7's theme-scoped input rules at (0,1,1)
+       * rather than losing to them silently.
+       */
+      input[type='text'] {
+        width: 100%;
+        padding: 0;
+        border: none;
+        background: none;
+        color: inherit;
+        font: inherit;
+        font-weight: 700;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+    }
+  }
+}
+
+/*
+ * F7's .fab is position:absolute so it can float over a page. Here it is a flex
+ * item in the footer instead; position:relative keeps FabButtons anchored to it,
+ * since they position against the .fab box.
+ */
+.palette-footer .fab {
+  position: relative;
+}
+
 /* Matches the search pill's height so the two sit on a common baseline. */
 .palette-footer .palette-add {
   flex: 0 0 auto;

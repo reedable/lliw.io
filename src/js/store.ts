@@ -7,11 +7,69 @@ export interface PaletteColor {
   value: string;
 }
 
-export interface Palette {
+/** Colours live in groups, so a palette reads as sections rather than one long list. */
+export interface ColorGroup {
   id: string;
   name: string;
   colors: PaletteColor[];
 }
+
+export interface Palette {
+  id: string;
+  name: string;
+  /** Colours before the first group header. Implicitly the leading bucket. */
+  ungrouped: PaletteColor[];
+  groups: ColorGroup[];
+}
+
+/*
+ * The card renders one flat list whose rows are headers and colours as siblings,
+ * so Framework7's sortable — whose indices are sibling-scoped — can move a colour
+ * across groups and reposition a header. These two folds are the only place the
+ * nested store shape and the flat rendered order meet. The flat form is derived
+ * for render and for interpreting a drop; it is never stored.
+ */
+export type PaletteItem =
+  | { kind: 'color'; color: PaletteColor }
+  | { kind: 'group'; group: ColorGroup };
+
+export const flattenPalette = (palette: Palette): PaletteItem[] => [
+  ...palette.ungrouped.map((color): PaletteItem => ({ kind: 'color', color })),
+  ...palette.groups.flatMap((group): PaletteItem[] => [
+    { kind: 'group', group },
+    ...group.colors.map((color): PaletteItem => ({ kind: 'color', color })),
+  ]),
+];
+
+/** Walks the flat order back into groups: each header opens one, colours fill it. */
+export const rebuildPalette = (
+  items: PaletteItem[],
+): Pick<Palette, 'ungrouped' | 'groups'> => {
+  const ungrouped: PaletteColor[] = [];
+  const groups: ColorGroup[] = [];
+  items.forEach((item) => {
+    if (item.kind === 'group') {
+      groups.push({ ...item.group, colors: [] });
+    } else if (groups.length === 0) {
+      ungrouped.push(item.color);
+    } else {
+      groups[groups.length - 1].colors.push(item.color);
+    }
+  });
+  return { ungrouped, groups };
+};
+
+/** The group migrated colours land in; every palette has at least this one. */
+export const DEFAULT_GROUP_NAME = 'Colors';
+
+/** Flattened view for callers that need every colour in order. */
+export const allColors = (palette: Palette): PaletteColor[] => [
+  ...palette.ungrouped,
+  ...palette.groups.flatMap((g) => g.colors),
+];
+
+export const findColor = (palette: Palette, colorId: string): PaletteColor | undefined =>
+  allColors(palette).find((c) => c.id === colorId);
 
 /*
  * Not crypto.randomUUID(): vite is configured with `server.host: true`, so the dev
@@ -24,6 +82,7 @@ const randomSuffix = () =>
 
 export const createPaletteId = () => `p${randomSuffix()}`;
 export const createColorId = () => `c${randomSuffix()}`;
+export const createGroupId = () => `g${randomSuffix()}`;
 
 /** The conformance tab the colour page opens on. */
 export type ConformanceSetting = 'AAA' | 'AA' | 'A';
@@ -87,10 +146,13 @@ const seedColors = (values: string[]): PaletteColor[] =>
   values.map((value, i) => ({ id: createColorId(), name: `Color ${i + 1}`, value }));
 
 /** Used only when storage has never been written — not when it holds an empty list. */
+const seedGroup = (values: string[]): ColorGroup[] => [
+  { id: createGroupId(), name: DEFAULT_GROUP_NAME, colors: seedColors(values) },
+];
+
 const SEED_PALETTES: Palette[] = [
-  { id: 'p1', name: 'Dusk', colors: seedColors(['#2b2d42', '#8d99ae', '#edf2f4', '#ef233c', '#d90429']) },
-  { id: 'p2', name: 'Citrus', colors: seedColors(['#fec89a', '#ffd7ba', '#fec5bb', '#f8edeb', '#d8e2dc']) },
-  { id: 'p3', name: 'Forest', colors: seedColors(['#264653', '#2a9d8f', '#e9c46a', '#f4a261', '#e76f51']) },
+  { id: 'p2', name: 'Citrus', ungrouped: [], groups: seedGroup(['#fec89a', '#ffd7ba', '#fec5bb', '#f8edeb', '#d8e2dc']) },
+  { id: 'p3', name: 'Forest', ungrouped: [], groups: seedGroup(['#264653', '#2a9d8f', '#e9c46a', '#f4a261', '#e76f51']) },
 ];
 
 const isPaletteColor = (value: unknown): value is PaletteColor => {
@@ -118,13 +180,37 @@ const normalizeColors = (raw: unknown): PaletteColor[] | null => {
   return colors;
 };
 
+/*
+ * Accepts all three shapes. v1/v2 stored `colors` on the palette; v3 stores
+ * `groups`. An older palette is wrapped in one group so nothing is lost and the
+ * user sees the same list under a "Colors" heading.
+ */
+const normalizeGroups = (p: Record<string, unknown>): ColorGroup[] | null => {
+  if (Array.isArray(p.groups)) {
+    const groups: ColorGroup[] = [];
+    p.groups.forEach((raw) => {
+      if (typeof raw !== 'object' || raw === null) return;
+      const g = raw as Record<string, unknown>;
+      if (typeof g.id !== 'string' || typeof g.name !== 'string') return;
+      const colors = normalizeColors(g.colors);
+      if (colors === null) return;
+      groups.push({ id: g.id, name: g.name, colors });
+    });
+    return groups;
+  }
+  const colors = normalizeColors(p.colors);
+  if (colors === null) return null;
+  return [{ id: createGroupId(), name: DEFAULT_GROUP_NAME, colors }];
+};
+
 const normalizePalette = (value: unknown): Palette | null => {
   if (typeof value !== 'object' || value === null) return null;
   const p = value as Record<string, unknown>;
   if (typeof p.id !== 'string' || typeof p.name !== 'string') return null;
-  const colors = normalizeColors(p.colors);
-  if (colors === null) return null;
-  return { id: p.id, name: p.name, colors };
+  const groups = normalizeGroups(p);
+  if (groups === null) return null;
+  const ungrouped = normalizeColors(p.ungrouped) ?? [];
+  return { id: p.id, name: p.name, ungrouped, groups };
 };
 
 /*
@@ -164,9 +250,11 @@ const savePalettes = (palettes: Palette[]) => {
  * v1: colors were string[] of hex values.
  * v2: colors are { id, name, value }. v1 files still import — normalizeColors
  *     converts them and generates the names.
+ * v3: colours live in groups. v1 and v2 files still import — their flat list is
+ *     wrapped in one group named "Colors".
  */
 export const EXPORT_FORMAT = 'lliw.io/palettes';
-export const EXPORT_VERSION = 2;
+export const EXPORT_VERSION = 3;
 
 export interface PaletteExport {
   format: string;
@@ -226,14 +314,32 @@ interface StoreCtx {
   state: AppState;
 }
 
-/** Applies `fn` to one palette's colours and persists. */
-const updateColors = (
+/** Applies `fn` to one palette's groups and persists. */
+const updateGroups = (
+  state: AppState,
+  paletteId: string,
+  fn: (groups: ColorGroup[]) => ColorGroup[],
+) => {
+  state.palettes = state.palettes.map((p) =>
+    p.id === paletteId ? { ...p, groups: fn(p.groups) } : p,
+  );
+  savePalettes(state.palettes);
+};
+
+/** Applies `fn` to every colour list, ungrouped included — for edits by colour id. */
+const mapAllColors = (
   state: AppState,
   paletteId: string,
   fn: (colors: PaletteColor[]) => PaletteColor[],
 ) => {
   state.palettes = state.palettes.map((p) =>
-    p.id === paletteId ? { ...p, colors: fn(p.colors) } : p,
+    p.id === paletteId
+      ? {
+          ...p,
+          ungrouped: fn(p.ungrouped),
+          groups: p.groups.map((g) => ({ ...g, colors: fn(g.colors) })),
+        }
+      : p,
   );
   savePalettes(state.palettes);
 };
@@ -276,7 +382,14 @@ const store = createStore({
       const newPalette: Palette = {
         id,
         name: 'Untitled',
-        colors: [{ id: createColorId(), name: 'Color 1', value: '#3b82f6' }],
+        ungrouped: [],
+        groups: [
+          {
+            id: createGroupId(),
+            name: DEFAULT_GROUP_NAME,
+            colors: [{ id: createColorId(), name: 'Color 1', value: '#3b82f6' }],
+          },
+        ],
       };
       state.palettes = [newPalette, ...state.palettes];
       savePalettes(state.palettes);
@@ -285,17 +398,50 @@ const store = createStore({
       state.palettes = state.palettes.map((p) => (p.id === id ? { ...p, name } : p));
       savePalettes(state.palettes);
     },
-    addColor({ state }: StoreCtx, { paletteId, value }: { paletteId: string; value: string }) {
-      updateColors(state, paletteId, (colors) => [
-        ...colors,
-        { id: createColorId(), name: `Color ${colors.length + 1}`, value },
-      ]);
+    addGroup(
+      { state }: StoreCtx,
+      { paletteId, id, name }: { paletteId: string; id: string; name: string },
+    ) {
+      updateGroups(state, paletteId, (groups) => [...groups, { id, name, colors: [] }]);
+    },
+    renameGroup(
+      { state }: StoreCtx,
+      { paletteId, groupId, name }: { paletteId: string; groupId: string; name: string },
+    ) {
+      updateGroups(state, paletteId, (groups) =>
+        groups.map((g) => (g.id === groupId ? { ...g, name } : g)),
+      );
+    },
+    /* Colours go with the group; deleting is the only way to remove them wholesale. */
+    removeGroup({ state }: StoreCtx, { paletteId, groupId }: { paletteId: string; groupId: string }) {
+      updateGroups(state, paletteId, (groups) => groups.filter((g) => g.id !== groupId));
+    },
+    /* Appends to a named group. Numbering counts the whole palette, so names stay
+       unique across groups rather than restarting at 1 in each. */
+    addColor(
+      { state }: StoreCtx,
+      { paletteId, groupId, value }: { paletteId: string; groupId: string; value: string },
+    ) {
+      updateGroups(state, paletteId, (groups) => {
+        const total = groups.reduce((n, g) => n + g.colors.length, 0);
+        return groups.map((g) =>
+          g.id === groupId
+            ? {
+                ...g,
+                colors: [
+                  ...g.colors,
+                  { id: createColorId(), name: `Color ${total + 1}`, value },
+                ],
+              }
+            : g,
+        );
+      });
     },
     setColorValue(
       { state }: StoreCtx,
       { paletteId, colorId, value }: { paletteId: string; colorId: string; value: string },
     ) {
-      updateColors(state, paletteId, (colors) =>
+      mapAllColors(state, paletteId, (colors) =>
         colors.map((c) => (c.id === colorId ? { ...c, value } : c)),
       );
     },
@@ -303,7 +449,7 @@ const store = createStore({
       { state }: StoreCtx,
       { paletteId, colorId, name }: { paletteId: string; colorId: string; name: string },
     ) {
-      updateColors(state, paletteId, (colors) =>
+      mapAllColors(state, paletteId, (colors) =>
         colors.map((c) => (c.id === colorId ? { ...c, name } : c)),
       );
     },
@@ -311,26 +457,31 @@ const store = createStore({
       { state }: StoreCtx,
       { paletteId, colorId }: { paletteId: string; colorId: string },
     ) {
-      updateColors(state, paletteId, (colors) => colors.filter((c) => c.id !== colorId));
+      mapAllColors(state, paletteId, (colors) => colors.filter((c) => c.id !== colorId));
     },
     /*
-     * from/to are positions in the full colour list as rendered. Guarded because
-     * F7 reports indices from the DOM, and a stale or out-of-range pair would
-     * otherwise splice `undefined` into the array.
+     * from/to are positions in the flat rendered sequence — headers and colours as
+     * siblings in one list, which is what makes Framework7's sibling-scoped indices
+     * meaningful across groups. The move is applied to that sequence and folded
+     * back, so a colour dragged past a header changes group and a dragged header
+     * repositions alone, leaving its colours to join whatever now precedes them.
      */
-    reorderColors(
+    moveItem(
       { state }: StoreCtx,
       { paletteId, from, to }: { paletteId: string; from: number; to: number },
     ) {
-      updateColors(state, paletteId, (colors) => {
-        if (from === to || from < 0 || to < 0 || from >= colors.length || to >= colors.length) {
-          return colors;
+      state.palettes = state.palettes.map((p) => {
+        if (p.id !== paletteId) return p;
+        const items = flattenPalette(p);
+        if (from === to || from < 0 || to < 0 || from >= items.length || to >= items.length) {
+          return p;
         }
-        const next = [...colors];
+        const next = [...items];
         const [moved] = next.splice(from, 1);
         next.splice(to, 0, moved);
-        return next;
+        return { ...p, ...rebuildPalette(next) };
       });
+      savePalettes(state.palettes);
     },
   },
 });

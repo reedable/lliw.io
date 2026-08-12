@@ -7,13 +7,14 @@ import {
   NavRight,
   Link,
   Block,
-  BlockTitle,
   Card,
   CardContent,
   List,
   ListItem,
   ListButton,
-  Button,
+  Fab,
+  FabButtons,
+  FabButton,
   f7,
   Icon,
   Searchbar,
@@ -22,8 +23,13 @@ import {
   useStore,
 } from 'framework7-react';
 import type { Searchbar as SearchbarNS } from 'framework7/types';
-import store, { createPaletteId } from '../js/store';
-import type { Palette } from '../js/store';
+import store, {
+  allColors,
+  createGroupId,
+  createPaletteId,
+  flattenPalette,
+} from '../js/store';
+import type { Palette, PaletteItem } from '../js/store';
 
 // Placeholder until Add opens a real picker: the colour a new entry starts as.
 const DEFAULT_COLOR = '#3b82f6';
@@ -44,15 +50,6 @@ const PaletteCard = ({
 }) => {
   const [query, setQuery] = useState('');
 
-  /*
-   * Search mode, mirroring Notes: entered by focusing the field, and left only by
-   * tapping the X — not by blurring. Keeping it out of `onBlur` matters. The X sits
-   * on the button that would otherwise be Add, so if blur ended search mode the
-   * state would flip back to Add before the tap resolved, and the tap would add a
-   * colour instead of cancelling. F7's own searchbar enable/disable is no help here:
-   * enable() only fires from a click on a .searchbar-enable element, never on focus.
-   */
-  const [searching, setSearching] = useState(false);
 
   /*
    * Edit mode reveals every colour and makes the list sortable. Suspending the
@@ -66,7 +63,6 @@ const PaletteCard = ({
     setEditing((was) => {
       if (!was) {
         setQuery('');
-        setSearching(false);
       }
       return !was;
     });
@@ -84,6 +80,21 @@ const PaletteCard = ({
     close: () => void;
   }>(null!);
   const pendingDelete = useRef(false);
+
+  /* Appends to the last group, which is the one nearest the Fab on screen. */
+  const addColor = () => {
+    const groupId = palette.groups[palette.groups.length - 1]?.id;
+    if (!groupId) return;
+    store.dispatch('addColor', { paletteId: palette.id, groupId, value: DEFAULT_COLOR });
+  };
+
+  const addGroup = () => {
+    store.dispatch('addGroup', {
+      paletteId: palette.id,
+      id: createGroupId(),
+      name: `Group ${palette.groups.length + 1}`,
+    });
+  };
 
   const deletePalette = () => {
     f7.dialog.confirm(`Delete “${palette.name}”? This cannot be undone.`, 'Delete palette', () => {
@@ -106,20 +117,26 @@ const PaletteCard = ({
     f7Searchbar: () => SearchbarNS.Searchbar;
   }>(null!);
 
-  const exitSearch = () => {
-    setQuery('');
-    setSearching(false);
-    searchbarRef.current?.el?.querySelector('input')?.blur();
-  };
 
-  // Matches name or hex, so filtering still works before a colour is named.
+  /*
+   * Rendered rows. Unfiltered, this is the flat sequence the store folds to and
+   * from, so a drag index means the same thing on both sides. While filtering it
+   * is just the matching colours — headers would be misleading when their group
+   * is partly hidden, and sorting is off in that state anyway, so no index from
+   * this shape ever reaches the store.
+   */
   const needle = editing ? '' : query.trim().toLowerCase();
-  const colors = palette.colors.filter(
-    (c) =>
-      !needle ||
-      c.name.toLowerCase().includes(needle) ||
-      c.value.toLowerCase().includes(needle),
-  );
+  const matches = (c: { name: string; value: string }) =>
+    !needle || c.name.toLowerCase().includes(needle) || c.value.toLowerCase().includes(needle);
+
+  const items: PaletteItem[] = needle
+    ? allColors(palette)
+        .filter(matches)
+        .map((color) => ({ kind: 'color', color }))
+    : flattenPalette(palette);
+
+  const totalCount = allColors(palette).length;
+  const visibleCount = items.filter((i) => i.kind === 'color').length;
 
   return (
     <Card ref={cardRef} expandable expandableOpened={opened} onCardClosed={handleClosed}>
@@ -150,7 +167,7 @@ const PaletteCard = ({
 
           <div className="palette-hero">
             <div className="palette-swatches">
-              {palette.colors.map((color) => (
+              {allColors(palette).map((color) => (
                 <div key={color.id} style={{ backgroundColor: color.value }} />
               ))}
             </div>
@@ -171,11 +188,10 @@ const PaletteCard = ({
           </div>
 
           {/* Below the fold: only visible once the card is open. */}
-          <BlockTitle>Colors</BlockTitle>
           {/*
-            sortableMoveElements={false} keeps F7 from reordering the DOM itself —
-            React stays the only thing that moves rows, so there is no ownership
-            fight like the one swipeout `delete` causes.
+            One list, headers and colours as sibling rows. That is what makes F7's
+            sibling-scoped sort indices meaningful across groups: `from`/`to` are
+            positions in this sequence, which is exactly what the store folds.
           */}
           <List
             strong
@@ -185,55 +201,78 @@ const PaletteCard = ({
             sortableEnabled={editing}
             sortableMoveElements={false}
             onSortableSort={(sortData: { from: number; to: number }) =>
-              store.dispatch('reorderColors', {
+              store.dispatch('moveItem', {
                 paletteId: palette.id,
                 from: sortData.from,
                 to: sortData.to,
               })
             }
           >
-            {colors.map((color) => (
-              <ListItem
-                key={color.id}
-                swipeout={!editing}
-                title={color.name}
-                after={color.value}
-                link={editing ? undefined : `/palette/${palette.id}/color/${color.id}/`}
-              >
-                <div
-                  slot="media"
-                  className="palette-chip"
-                  style={{ backgroundColor: color.value }}
-                />
-                {/*
-                  `close`, not `delete`. F7's delete removes the <li> from the DOM
-                  itself, which fights React for ownership of a node it still has in
-                  its tree. close just retracts the swipeout and lets the store
-                  update drive the removal through React.
-                */}
-                <SwipeoutActions right>
-                  <SwipeoutButton
-                    close
-                    color="red"
-                    onClick={() =>
-                      store.dispatch('removeColor', {
+            {items.map((item) =>
+              item.kind === 'group' ? (
+                <ListItem key={item.group.id} className="palette-group">
+                  {/*
+                    In the title slot, so F7 still renders its own row structure —
+                    including the .sortable-handler that drags start from. Drags
+                    are delegated on that handler alone, so focusing this input
+                    does not compete with dragging the row.
+                  */}
+                  <input
+                    slot="title"
+                    type="text"
+                    placeholder="Group name"
+                    aria-label="Group name"
+                    value={item.group.name}
+                    onChange={(e) =>
+                      store.dispatch('renameGroup', {
                         paletteId: palette.id,
-                        colorId: color.id,
+                        groupId: item.group.id,
+                        name: e.target.value,
                       })
                     }
-                  >
-                    Delete
-                  </SwipeoutButton>
-                </SwipeoutActions>
-              </ListItem>
-            ))}
+                  />
+                </ListItem>
+              ) : (
+                <ListItem
+                  key={item.color.id}
+                  swipeout={!editing}
+                  title={item.color.name}
+                  after={item.color.value}
+                  link={editing ? undefined : `/palette/${palette.id}/color/${item.color.id}/`}
+                >
+                  <div
+                    slot="media"
+                    className="palette-chip"
+                    style={{ backgroundColor: item.color.value }}
+                  />
+                  {/*
+                    `close`, not `delete`. F7's delete removes the <li> from the DOM
+                    itself, which fights React for ownership of a node it still has
+                    in its tree. close just retracts the swipeout and lets the store
+                    update drive the removal through React.
+                  */}
+                  <SwipeoutActions right>
+                    <SwipeoutButton
+                      close
+                      color="red"
+                      onClick={() =>
+                        store.dispatch('removeColor', {
+                          paletteId: palette.id,
+                          colorId: item.color.id,
+                        })
+                      }
+                    >
+                      Delete
+                    </SwipeoutButton>
+                  </SwipeoutActions>
+                </ListItem>
+              ),
+            )}
           </List>
 
-          {colors.length === 0 && (
+          {visibleCount === 0 && (
             <Block className="palette-empty">
-              {palette.colors.length === 0
-                ? 'No colors yet.'
-                : `No colors match “${query.trim()}”.`}
+              {totalCount === 0 ? 'No colors yet.' : `No colors match “${query.trim()}”.`}
             </Block>
           )}
 
@@ -257,27 +296,28 @@ const PaletteCard = ({
               disableButton={false}
               placeholder="Filter colors"
               value={query}
-              onFocus={() => setSearching(true)}
               onInput={(e: any) => setQuery(e.target.value)}
               onClickClear={() => setQuery('')}
             />
-            {/* Circular glass button beside the pill, as in Notes. Styling comes
-                from F7's own --f7-glass-* tokens, not hand-picked values. It is
-                Add normally, and becomes the cancel X while searching. */}
-            <Button
-              className="palette-add"
-              aria-label={searching ? 'Cancel filter' : 'Add color'}
-              onClick={() =>
-                searching
-                  ? exitSearch()
-                  : store.dispatch('addColor', { paletteId: palette.id, value: DEFAULT_COLOR })
-              }
-            >
-              <Icon
-                ios={searching ? 'f7:xmark' : 'f7:plus'}
-                md={searching ? 'material:close' : 'material:add'}
-              />
-            </Button>
+            {/*
+              Two outcomes, so a Fab speed-dial rather than a plain button. It
+              lives inside .palette-footer, which is already sticky and inside
+              .card-content — an opened card carries a scale that only
+              .card-content counter-scales, so anything outside renders stretched.
+              CSS makes it a flex item; FabButtons still anchor to it.
+            */}
+            <Fab className="palette-add" aria-label="Add">
+              <Icon ios="f7:plus" md="material:add" />
+              <Icon ios="f7:xmark" md="material:close" />
+              <FabButtons position="top">
+                <FabButton fabClose label="Color" onClick={addColor}>
+                  <Icon ios="f7:drop" md="material:water_drop" />
+                </FabButton>
+                <FabButton fabClose label="Group" onClick={addGroup}>
+                  <Icon ios="f7:folder" md="material:folder" />
+                </FabButton>
+              </FabButtons>
+            </Fab>
           </div>
         </div>
       </CardContent>

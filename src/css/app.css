@@ -12,6 +12,9 @@
   /* The two knobs for the palette name in the hero. */
   --palette-name-size: 26px;
   --palette-name-padding: 18px 16px;
+
+  /* Gap between the Fab and the bottom of the screen. */
+  --palette-fab-gap: 16px;
 }
 
 /*
@@ -94,7 +97,7 @@
    * and lost to them silently, so every value set on it was discarded whatever
    * the number.
    */
-  > input[type='text'] {
+  > input[type="text"] {
     flex: 0 0 auto;
     width: 100%;
     box-sizing: border-box;
@@ -347,15 +350,15 @@
   z-index: 10;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 16px calc(8px + var(--f7-safe-area-bottom, 0px));
+  justify-content: flex-end;
+  /*
+   * A fixed gap from the screen edge rather than the full home-indicator inset.
+   * The inset was 8px + 34px = 42px, which sat the Fab well clear of the bottom;
+   * this brings it down to --palette-fab-gap, matching --lliw-tabbar-gap so the
+   * Fab and the app tab bar sit at the same height from the edge.
+   */
+  padding: 8px 16px var(--palette-fab-gap);
   background: none;
-}
-
-/* Searchbar brings its own input styling; it only needs to flex here. */
-.palette-search {
-  flex: 1 1 auto;
-  min-width: 0;
 }
 
 /*
@@ -380,7 +383,7 @@
        * (0,3,1) and beats Framework7's theme-scoped input rules at (0,1,1)
        * rather than losing to them silently.
        */
-      input[type='text'] {
+      input[type="text"] {
         width: 100%;
         padding: 0;
         border: none;
@@ -416,4 +419,8 @@
   box-shadow: var(--f7-glass-shadow);
   backdrop-filter: saturate(180%) blur(16px);
   -webkit-backdrop-filter: saturate(180%) blur(16px);
+
+  &.fab-right-bottom {
+    margin: 0;
+  }
 }

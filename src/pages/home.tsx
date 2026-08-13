@@ -17,12 +17,10 @@ import {
   FabButton,
   f7,
   Icon,
-  Searchbar,
   SwipeoutActions,
   SwipeoutButton,
   useStore,
 } from 'framework7-react';
-import type { Searchbar as SearchbarNS } from 'framework7/types';
 import store, {
   allColors,
   createGroupId,
@@ -48,7 +46,6 @@ const PaletteCard = ({
   opened: boolean;
   onClosed: () => void;
 }) => {
-  const [query, setQuery] = useState('');
 
 
   /*
@@ -59,14 +56,7 @@ const PaletteCard = ({
    */
   const [editing, setEditing] = useState(false);
 
-  const toggleEditing = () => {
-    setEditing((was) => {
-      if (!was) {
-        setQuery('');
-      }
-      return !was;
-    });
-  };
+  const toggleEditing = () => setEditing((was) => !was);
 
   /*
    * Deleting an open card can't just unmount it: F7's close() is what restores the
@@ -111,32 +101,13 @@ const PaletteCard = ({
     }
     onClosed();
   };
-  // Shape dictated by SearchbarProps['ref'] in framework7-react.
-  const searchbarRef = useRef<{
-    el: HTMLElement | null;
-    f7Searchbar: () => SearchbarNS.Searchbar;
-  }>(null!);
 
 
   /*
-   * Rendered rows. Unfiltered, this is the flat sequence the store folds to and
-   * from, so a drag index means the same thing on both sides. While filtering it
-   * is just the matching colours — headers would be misleading when their group
-   * is partly hidden, and sorting is off in that state anyway, so no index from
-   * this shape ever reaches the store.
+   * Rendered rows: the flat sequence the store folds to and from, so a drag index
+   * means the same thing on both sides.
    */
-  const needle = editing ? '' : query.trim().toLowerCase();
-  const matches = (c: { name: string; value: string }) =>
-    !needle || c.name.toLowerCase().includes(needle) || c.value.toLowerCase().includes(needle);
-
-  const items: PaletteItem[] = needle
-    ? allColors(palette)
-        .filter(matches)
-        .map((color) => ({ kind: 'color', color }))
-    : flattenPalette(palette);
-
-  const totalCount = allColors(palette).length;
-  const visibleCount = items.filter((i) => i.kind === 'color').length;
+  const items: PaletteItem[] = flattenPalette(palette);
 
   return (
     <Card ref={cardRef} expandable expandableOpened={opened} onCardClosed={handleClosed}>
@@ -270,10 +241,8 @@ const PaletteCard = ({
             )}
           </List>
 
-          {visibleCount === 0 && (
-            <Block className="palette-empty">
-              {totalCount === 0 ? 'No colors yet.' : `No colors match “${query.trim()}”.`}
-            </Block>
+          {allColors(palette).length === 0 && (
+            <Block className="palette-empty">No colors yet.</Block>
           )}
 
           {/* Destructive action last, so it takes a deliberate scroll to reach. */}
@@ -282,23 +251,6 @@ const PaletteCard = ({
           </List>
 
           <div className="palette-footer">
-            {/*
-              customSearch keeps F7 from doing its own DOM filtering — React owns
-              the list. inline drops the searchbar's own bar chrome so it sits
-              inside this one, and disableButton removes the "Cancel" affordance.
-            */}
-            <Searchbar
-              ref={searchbarRef}
-              className="palette-search"
-              inline
-              customSearch
-              clearButton
-              disableButton={false}
-              placeholder="Filter colors"
-              value={query}
-              onInput={(e: any) => setQuery(e.target.value)}
-              onClickClear={() => setQuery('')}
-            />
             {/*
               Two outcomes, so a Fab speed-dial rather than a plain button. It
               lives inside .palette-footer, which is already sticky and inside

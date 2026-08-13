@@ -2,16 +2,19 @@
 
 /*
  * Framework7 hard-codes `.card-expandable { height: 300px }` for the collapsed
- * state and clips content that is otherwise laid out full-screen. There is no
- * F7 custom property for it, so mirror the value here; the tablet vars size the
- * expanded target, not the collapsed card, so this stays constant.
+ * state and clips content that is otherwise laid out full-screen. There is no F7
+ * custom property for it, so this token drives both: the override below and the
+ * hero that has to fill exactly that window. One number, so they cannot drift.
  */
 :root {
+  /* Collapsed: the card box, and the hero that fills it exactly. */
+  --palette-card-height: 200px;
+  /* Expanded: the hero is no longer bounded by the card, so it can be taller. */
   --palette-hero-height: 300px;
 
   /* The two knobs for the palette name in the hero. */
-  --palette-name-size: 26px;
-  --palette-name-padding: 18px 16px;
+  --palette-name-size: 16px;
+  --palette-name-padding: 10px 16px;
 
   /* Gap between the Fab and the bottom of the screen. */
   --palette-fab-gap: 16px;
@@ -71,10 +74,37 @@
   transform: translate3d(0, calc(100% + 32px), 0);
 }
 
+/* The collapsed card. F7's 300px is the only thing this overrides. */
+.card-expandable {
+  height: var(--palette-card-height);
+}
+
 .palette-hero {
   position: relative;
   flex: 0 0 auto; /* flex item of .palette-body — must not shrink */
-  height: var(--palette-hero-height);
+
+  /*
+   * Collapsed, the hero fills the card window exactly, so the name bar sits at
+   * the bottom edge rather than being clipped. Opened, the card no longer bounds
+   * it and it takes the taller value. Set on card-opening too, so the change
+   * happens with the animation rather than snapping at the end of it.
+   */
+  height: var(--palette-card-height);
+
+  /*
+   * Deliberately not transitioned. F7 scales the card and counter-scales
+   * .card-content by the inverse, but CSS interpolates the two independently, so
+   * they only cancel at the endpoints — around the midpoint the card is at ~2.6x
+   * and the content at ~0.62x, magnifying everything inside by ~1.6x. Animating a
+   * layout height through that compounds the distortion. Switching instantly when
+   * .card-opening lands puts the hero at its final size before the scale plays,
+   * which is how F7's own content behaves.
+   */
+
+  .card-opening &,
+  .card-opened & {
+    height: var(--palette-hero-height);
+  }
   display: flex;
   flex-direction: column;
 

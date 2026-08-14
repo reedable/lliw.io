@@ -469,6 +469,17 @@ html.pcard-open .views > .tabbar {
   display: flex;
   flex-direction: column;
   min-height: 100%;
+
+  /*
+   * F7's `.list.inset` (0,2,0) sets margin-left/right to
+   * --f7-list-inset-side-margin (16px). Inside the card the list already sits in
+   * a full-bleed column, so the side inset is doubled-up gutter. Zeroed here at
+   * (0,2,1) via the tag, leaving the 35px vertical margin alone.
+   */
+  > div.inset {
+    margin-left: 0;
+    margin-right: 0;
+  }
 }
 
 /*

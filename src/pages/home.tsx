@@ -1,14 +1,8 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Page,
-  Navbar,
-  NavTitle,
-  NavTitleLarge,
-  NavRight,
   Link,
   Block,
-  Card,
-  CardContent,
   List,
   ListItem,
   ListButton,
@@ -39,37 +33,58 @@ const DEFAULT_COLOR = '#3b82f6';
  */
 const PaletteCard = ({
   palette,
-  opened,
-  onClosed,
+  expanded,
+  editing,
+  onExpand,
+  onCollapse,
 }: {
   palette: Palette;
-  opened: boolean;
-  onClosed: () => void;
+  expanded: boolean;
+  editing: boolean;
+  onExpand: () => void;
+  onCollapse: () => void;
 }) => {
-
-
   /*
-   * Edit mode reveals every colour and makes the list sortable. Suspending the
-   * filter is not only the requested behaviour, it is what makes reordering safe:
-   * onSortableSort reports from/to as positions in the *rendered* list, so a drag
-   * while filtered would move the wrong colour.
+   * Expansion is driven from HomePage, because the navbar changes with it — while
+   * a palette is expanded the navbar carries its back chevron and Edit. That is
+   * what removes the stacking problem entirely: the card never has to cover the
+   * chrome, so nothing needs to escape its layer.
+   *
+   * Geometry is absolute within .page, not fixed. `fixed` resolves against the
+   * nearest transformed ancestor rather than the viewport, and Framework7 puts
+   * transforms on pages and views — which is what left the card 42px down. .page
+   * is position:absolute, so it is a deterministic containing block.
    */
-  const [editing, setEditing] = useState(false);
-
-  const toggleEditing = () => setEditing((was) => !was);
-
-  /*
-   * Deleting an open card can't just unmount it: F7's close() is what restores the
-   * hidden navbar and removes the backdrop. Unmounting while open would strand
-   * both. So close first, then delete once F7 reports the card closed.
-   */
-  // Shape dictated by CardProps['ref'] in framework7-react.
-  const cardRef = useRef<{
-    el: HTMLElement | null;
-    open: () => void;
-    close: () => void;
-  }>(null!);
+  const cardElRef = useRef<HTMLDivElement>(null);
+  const holderRef = useRef<HTMLDivElement>(null);
+  const [rect, setRect] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
   const pendingDelete = useRef(false);
+
+  const lifted = rect !== null || expanded;
+
+  // Measure before the card leaves the flow, then let CSS carry it to full size.
+  useEffect(() => {
+    if (!expanded) return;
+    const el = cardElRef.current;
+    const page = el?.closest('.page') as HTMLElement | null;
+    if (!el || !page) return;
+    const r = el.getBoundingClientRect();
+    const p = page.getBoundingClientRect();
+    setRect({ top: r.top - p.top, left: r.left - p.left, width: r.width, height: r.height });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expanded]);
+
+  useEffect(() => {
+    if (!expanded) setRect(null);
+  }, [expanded]);
+
+  const deletePalette = () => {
+    f7.dialog.confirm(`Delete “${palette.name}”? This cannot be undone.`, 'Delete palette', () => {
+      pendingDelete.current = true;
+      onCollapse();
+      store.dispatch('deletePalette', { id: palette.id });
+    });
+  };
 
   /* Appends to the last group, which is the one nearest the Fab on screen. */
   const addColor = () => {
@@ -86,56 +101,49 @@ const PaletteCard = ({
     });
   };
 
-  const deletePalette = () => {
-    f7.dialog.confirm(`Delete “${palette.name}”? This cannot be undone.`, 'Delete palette', () => {
-      pendingDelete.current = true;
-      cardRef.current?.close();
-    });
-  };
-
-  const handleClosed = () => {
-    if (pendingDelete.current) {
-      pendingDelete.current = false;
-      store.dispatch('deletePalette', { id: palette.id });
-      return;
-    }
-    onClosed();
-  };
-
-
-  /*
-   * Rendered rows: the flat sequence the store folds to and from, so a drag index
-   * means the same thing on both sides.
-   */
+  /* The flat sequence the store folds to and from, so a drag index matches. */
   const items: PaletteItem[] = flattenPalette(palette);
 
-  return (
-    <Card ref={cardRef} expandable expandableOpened={opened} onCardClosed={handleClosed}>
-      <CardContent padding={false}>
+  /*
+   * Absolute within .page. Collapsed it is in the flow; expanded it fills the area
+   * below the navbar, using F7's own navbar tokens so it lines up with the chrome
+   * rather than covering it.
+   */
+  const style: React.CSSProperties = !rect
+    ? {}
+    : expanded
+      ? {
+          position: 'absolute',
+          margin: 0,
+          top: 'calc(var(--f7-navbar-height) + var(--f7-safe-area-top))',
+          left: 0,
+          right: 0,
+          bottom: 0,
+          width: 'auto',
+          height: 'auto',
+        }
+      : {
+          position: 'absolute',
+          margin: 0,
+          top: rect.top,
+          left: rect.left,
+          width: rect.width,
+          height: rect.height,
+        };
+
+  const card = (
+    <div
+      ref={cardElRef}
+      className={`pcard${expanded ? ' is-open' : ''}${lifted ? ' is-lifted' : ''}`}
+      style={style}
+      onClick={expanded ? undefined : onExpand}
+    >
+      <div className="pcard-inner">
         {/*
           Full-height flex column so the footer can sit at the bottom of a short
           card via margin-top:auto, and stick to the viewport bottom on a long one.
         */}
         <div className="palette-body">
-          {/*
-            Inside CardContent, because F7 leaves an open card scaled and only
-            counter-scales .card-content — anything outside it renders stretched.
-            Sticky with zero height so it pins to the top of the scroller without
-            occupying a row in the flex column.
-          */}
-          <div className="palette-actions">
-            <Link
-              cardClose
-              className="palette-close"
-              aria-label="Close palette"
-              iconIos="f7:chevron_left"
-              iconMd="material:chevron_left"
-            />
-            <Link href={false} className="palette-edit" onClick={toggleEditing}>
-              {editing ? 'Done' : 'Edit'}
-            </Link>
-          </div>
-
           <div className="palette-hero">
             <div className="palette-swatches">
               {allColors(palette).map((color) => (
@@ -272,46 +280,92 @@ const PaletteCard = ({
             </Fab>
           </div>
         </div>
-      </CardContent>
+      </div>
+    </div>
+  );
 
-    </Card>
+  return (
+    <>
+      {/* Holds the row's space in the list while the card is lifted out of it. */}
+      <div ref={holderRef} className={`pcard-holder${lifted ? ' is-holding' : ''}`} />
+      {card}
+    </>
   );
 };
 
 const HomePage = () => {
   const palettes = useStore('palettes') as Palette[];
 
-  // Id of the card to auto-expand. Set only when a palette is created here, so a
-  // freshly added card mounts already open; cleared once that card is closed.
-  const [autoOpenId, setAutoOpenId] = useState<string | null>(null);
+  /*
+   * Which palette is expanded, held here rather than inside the card, because the
+   * navbar changes with it. That is what removes the stacking problem: the card
+   * never has to cover the chrome, the chrome becomes the palette's own.
+   */
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+
+  const expanded = palettes.find((p) => p.id === expandedId) ?? null;
+
+  const collapse = () => {
+    setExpandedId(null);
+    setEditing(false);
+  };
 
   const addPalette = () => {
     const id = createPaletteId();
     store.dispatch('addPalette', { id });
-    setAutoOpenId(id);
+    setExpandedId(id);
   };
 
+  /* Tab bar belongs to home and settings only. */
+  useEffect(() => {
+    document.documentElement.classList.toggle('pcard-open', expanded !== null);
+    return () => document.documentElement.classList.remove('pcard-open');
+  }, [expanded]);
+
   return (
-    <Page name="home">
-      <Navbar large>
-        <NavTitle>lliw.io</NavTitle>
-        <NavRight>
-          <Link
-            iconIos="f7:plus"
-            iconMd="material:add"
-            tooltip="Add palette"
-            onClick={addPalette}
-          />
-        </NavRight>
-        <NavTitleLarge>lliw.io</NavTitleLarge>
-      </Navbar>
+    <Page name="home" noNavbar>
+      {/*
+        Controls live in their own layer, not in a navbar. One steady z-index, each
+        control absolutely positioned, parked above the viewport when it does not
+        apply and translated down when it does. Nothing mounts or unmounts, and
+        nothing has to out-stack anything else.
+      */}
+      <div slot="fixed" className="controls">
+        <Link
+          href={false}
+          onClick={collapse}
+          aria-label="Back"
+          className="control control-back"
+          iconIos="f7:chevron_left"
+          iconMd="material:chevron_left"
+        />
+        <Link
+          className="control control-add"
+          iconIos="f7:plus"
+          iconMd="material:add"
+          aria-label="Add palette"
+          onClick={addPalette}
+        />
+        <Link
+          className="control control-edit"
+          href={false}
+          onClick={() => setEditing((was) => !was)}
+        >
+          {editing ? 'Done' : 'Edit'}
+        </Link>
+      </div>
+
+      <h1 className="home-title">lliw.io</h1>
 
       {palettes.map((palette) => (
         <PaletteCard
           key={palette.id}
           palette={palette}
-          opened={palette.id === autoOpenId}
-          onClosed={() => setAutoOpenId((cur) => (cur === palette.id ? null : cur))}
+          expanded={palette.id === expandedId}
+          editing={editing && palette.id === expandedId}
+          onExpand={() => setExpandedId(palette.id)}
+          onCollapse={collapse}
         />
       ))}
     </Page>

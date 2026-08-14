@@ -74,9 +74,183 @@
   transform: translate3d(0, calc(100% + 32px), 0);
 }
 
-/* The collapsed card. F7's 300px is the only thing this overrides. */
-.card-expandable {
+/*
+ * Our expandable card, replacing framework7's card-expandable.
+ *
+ * The outer box is what animates: collapsed it sits in the list at
+ * --palette-card-height; open it is fixed at the viewport. The inner box is
+ * always 100vw x 100vh, so opening changes only what overflow:hidden clips —
+ * nothing inside is transformed or re-laid-out, which is what removes the
+ * mid-transition stretch. F7 scaled the card and counter-scaled the content, and
+ * two independently interpolated scales only cancel at the endpoints.
+ *
+ * Collapsed, the inner box is 32px wider than the card and simply clipped, which
+ * is what F7 did too.
+ */
+.pcard {
+  position: relative;
+  z-index: 2;
+  overflow: hidden;
   height: var(--palette-card-height);
+  margin: var(--f7-card-expandable-margin-vertical)
+    calc(var(--f7-card-expandable-margin-horizontal) + var(--f7-safe-area-left));
+  background: var(--f7-card-expandable-bg-color);
+  border-radius: var(--f7-card-expandable-border-radius);
+  box-shadow: var(--f7-card-box-shadow);
+
+  /*
+   * Lifted = absolute within .page; that is when geometry animates. No z-index
+   * war: the navbar carries this palette's own controls while it is expanded, so
+   * the card has nothing to cover.
+   */
+  &.is-lifted {
+    z-index: 1;
+    transition:
+      top 300ms,
+      left 300ms,
+      right 300ms,
+      bottom 300ms,
+      width 300ms,
+      height 300ms,
+      border-radius 300ms;
+  }
+
+  &.is-open {
+    border-radius: 0;
+  }
+
+  > .pcard-inner {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  &.is-open > .pcard-inner {
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/*
+ * Hides the app tab bar while a card is open. It lives at `.views > .tabbar`
+ * (z-index 5001) as a sibling of the view, so nothing inside the page can cover
+ * it — the same translate F7 uses for a hidden toolbar, plus the extra 32px that
+ * clears the glass shadow's blur.
+ */
+/*
+ * Controls layer. One steady z-index above the page; each control is positioned
+ * here rather than living in a navbar, so nothing has to out-stack anything and
+ * nothing mounts or unmounts when state changes.
+ *
+ * Parked controls sit above the top edge and slide down when they apply. The
+ * layer itself is inert; only the controls take pointer events.
+ */
+.controls {
+  position: absolute;
+  top: calc(var(--f7-safe-area-top) + 8px);
+  left: 8px;
+  right: 8px;
+  z-index: 500;
+  height: var(--f7-searchbar-input-height);
+  pointer-events: none;
+}
+
+.control {
+  position: absolute;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--f7-searchbar-input-height);
+  background-color: var(--f7-glass-bg-color);
+  box-shadow: var(--f7-glass-shadow);
+  backdrop-filter: saturate(180%) blur(16px);
+  -webkit-backdrop-filter: saturate(180%) blur(16px);
+  pointer-events: auto;
+
+  /*
+   * `.controls a.control` is (0,2,1) on purpose. F7 sets `.ios .link { transition:
+   * opacity 300ms }` at (0,1,1), which beat a bare `.control` at (0,1,0) — so the
+   * element transitioned opacity and applied the transform instantly. That is the
+   * abrupt appear plus fade; neither was written here.
+   */
+  transition: transform 300ms;
+}
+
+.controls a.control {
+  transition: transform 300ms;
+}
+
+/* Parked: far enough up to clear the glass shadow's blur. */
+.control-back,
+.control-edit {
+  transform: translateY(calc(-100% - var(--f7-safe-area-top) - 40px));
+}
+
+.control-back {
+  left: 0;
+  width: var(--f7-searchbar-input-height);
+  border-radius: 50%;
+}
+
+.control-add {
+  right: 0;
+  width: var(--f7-searchbar-input-height);
+  border-radius: 50%;
+}
+
+.control-edit {
+  right: 0;
+  padding: 0 16px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.pcard-open .control-back,
+.pcard-open .control-edit {
+  transform: translateY(0);
+}
+
+.pcard-open .control-add {
+  transform: translateY(calc(-100% - var(--f7-safe-area-top) - 40px));
+}
+
+/* The app name is page content now, not a navbar title. */
+.home-title {
+  margin: 0;
+  padding: calc(var(--f7-safe-area-top) + 72px) 16px 8px;
+  font-size: 34px;
+  font-weight: 700;
+}
+
+html.pcard-open .views > .tabbar {
+  transform: translate3d(0, calc(100% + 32px), 0);
+  transition: transform 300ms;
+}
+
+/*
+ * The navbar is hoisted out of .page and sits in the view at z-index 500, which
+ * is why a page-local z-index on the card never covered it. Rather than hide it —
+ * a global rule also took the pushed colour page's Back button — the page holding
+ * an open card is lifted above it. Scoped to that page, so a pushed page keeps
+ * its own navbar.
+ */
+
+
+/*
+ * Reserves the row while the card is lifted out of the list, so the list does not jump
+ * and so closeCard has something to measure the return rect from. Same box as a
+ * resting card.
+ */
+.pcard-holder {
+  height: 0;
+
+  /* Only while the card is portalled away — otherwise it would double the row. */
+  &.is-holding {
+    height: var(--palette-card-height);
+    margin: var(--f7-card-expandable-margin-vertical)
+      calc(var(--f7-card-expandable-margin-horizontal) + var(--f7-safe-area-left));
+  }
 }
 
 .palette-hero {
@@ -92,17 +266,20 @@
   height: var(--palette-card-height);
 
   /*
-   * Deliberately not transitioned. F7 scales the card and counter-scales
-   * .card-content by the inverse, but CSS interpolates the two independently, so
-   * they only cancel at the endpoints — around the midpoint the card is at ~2.6x
-   * and the content at ~0.62x, magnifying everything inside by ~1.6x. Animating a
-   * layout height through that compounds the distortion. Switching instantly when
-   * .card-opening lands puts the hero at its final size before the scale plays,
-   * which is how F7's own content behaves.
+   * Transitioned again, and safe now that nothing is scaled. Under F7 this
+   * compounded the counter-scale distortion, which is why it had been removed.
+   * 300ms matches the card's own geometry transition, so the hero grows over the
+   * same interval the card does.
    */
+  transition: height 300ms;
 
-  .card-opening &,
-  .card-opened & {
+  /*
+   * is-open only, not is-lifted. The portal remounts this node with is-lifted
+   * already applied, so keying off it meant the hero mounted at its final height
+   * and never transitioned. is-open lands a frame later, on the mounted node,
+   * which is the same thing that makes the card's own geometry animate.
+   */
+  .pcard.is-open & {
     height: var(--palette-hero-height);
   }
   display: flex;
@@ -146,7 +323,7 @@
      */
     pointer-events: none;
 
-    .card-opened & {
+    .pcard.is-open & {
       pointer-events: auto;
     }
   }
@@ -172,78 +349,6 @@
   z-index: 20;
   height: 0;
   flex: 0 0 auto;
-}
-
-.palette-close,
-.palette-edit {
-  position: absolute;
-  top: 8px;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 200ms;
-}
-
-.palette-close {
-  left: 8px;
-}
-
-.palette-edit {
-  right: 8px;
-}
-
-/*
- * Open, the card fills the viewport and the hero starts at y=0, under the status
- * bar (index.html sets viewport-fit=cover). Offset by the inset, matching what F7
- * does for its own card headers:
- *   .card-expandable.card-opening .card-header,
- *   .card-expandable.card-opened  .card-header {
- *     padding-top: calc(... + var(--f7-safe-area-top));
- *   }
- * Both classes, so the position is right during the opening animation too.
- * --f7-safe-area-top is env(safe-area-inset-top) where supported, else 0px.
- */
-.card-opening .palette-close,
-.card-opening .palette-edit,
-.card-opened .palette-close,
-.card-opened .palette-edit {
-  top: calc(8px + var(--f7-safe-area-top));
-}
-
-.card-opened .palette-close,
-.card-opened .palette-edit {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-/*
- * Same glass treatment F7 gives .navbar .right — which is why the + on the Home
- * navbar floats and these did not. Tokens are F7's, matching .palette-add in the
- * footer so the two controls agree.
- *
- * No `color: #fff` here: --f7-glass-bg-color is rgba(255,255,255,0.75), so white
- * text would be invisible on it. They take the default link colour.
- */
-.palette-edit,
-.palette-close {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: var(--f7-searchbar-input-height);
-  background-color: var(--f7-glass-bg-color);
-  box-shadow: var(--f7-glass-shadow);
-  backdrop-filter: saturate(180%) blur(16px);
-  -webkit-backdrop-filter: saturate(180%) blur(16px);
-}
-
-.palette-edit {
-  padding: 0 16px;
-  border-radius: 999px;
-  font-weight: 600;
-}
-
-.palette-close {
-  width: var(--f7-searchbar-input-height);
-  border-radius: 50%;
 }
 
 /*

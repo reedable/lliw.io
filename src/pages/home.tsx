@@ -66,11 +66,10 @@ const PaletteCard = ({
   useEffect(() => {
     if (!expanded) return;
     const el = cardElRef.current;
-    const page = el?.closest('.page') as HTMLElement | null;
-    if (!el || !page) return;
+    if (!el) return;
+    // Viewport coordinates, to match position: fixed below.
     const r = el.getBoundingClientRect();
-    const p = page.getBoundingClientRect();
-    setRect({ top: r.top - p.top, left: r.left - p.left, width: r.width, height: r.height });
+    setRect({ top: r.top, left: r.left, width: r.width, height: r.height });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expanded]);
 
@@ -105,25 +104,24 @@ const PaletteCard = ({
   const items: PaletteItem[] = flattenPalette(palette);
 
   /*
-   * Absolute within .page. Collapsed it is in the flow; expanded it fills the area
-   * below the navbar, using F7's own navbar tokens so it lines up with the chrome
-   * rather than covering it.
+   * Fixed, so the expanded size comes from the viewport. Absolute resolved against
+   * .page-content — the scroller — whose box is only as tall as the list, so with
+   * a few palettes `bottom: 0` landed above the bottom of the screen and the card
+   * was cut off.
    */
   const style: React.CSSProperties = !rect
     ? {}
     : expanded
       ? {
-          position: 'absolute',
+          position: 'fixed',
           margin: 0,
-          top: 'calc(var(--f7-navbar-height) + var(--f7-safe-area-top))',
+          top: 0,
           left: 0,
-          right: 0,
-          bottom: 0,
-          width: 'auto',
-          height: 'auto',
+          width: '100vw',
+          height: '100dvh',
         }
       : {
-          position: 'absolute',
+          position: 'fixed',
           margin: 0,
           top: rect.top,
           left: rect.left,

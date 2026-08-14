@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   Page,
   Link,
@@ -26,6 +26,66 @@ import type { Palette, PaletteItem } from '../js/store';
 // Placeholder until Add opens a real picker: the colour a new entry starts as.
 const DEFAULT_COLOR = '#3b82f6';
 
+/** Must match the 300ms in `.pcard.is-lifted`'s transition in app.css. */
+const LIFT_MS = 300;
+
+interface Rect {
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+}
+
+const readRect = (el: Element): Rect => {
+  // Viewport coordinates, which is what position:fixed resolves against.
+  const r = el.getBoundingClientRect();
+  return { top: r.top, left: r.left, width: r.width, height: r.height };
+};
+
+/*
+ * Evaluates CSS's `ease` — cubic-bezier(0.25, 0.1, 0.25, 1), the default timing
+ * function, and therefore the one .pcard.is-lifted's transition uses. The scroll
+ * unwind below is driven from JS, so it has to reproduce the curve the geometry
+ * is being carried along by; a linear tween against an eased box is visible as
+ * the content sliding out of step with the edge that is chasing it.
+ *
+ * x(t) and y(t) are the standard cubic Béziers with p0 = 0 and p3 = 1. Bisection
+ * rather than Newton-Raphson to invert x: the curve is monotonic in t, 20 halvings
+ * pin it to under 1e-6, and it runs once per frame for 300ms.
+ */
+const ease = (fraction: number): number => {
+  const cx = 3 * 0.25;
+  const bx = 3 * (0.25 - 0.25) - cx;
+  const ax = 1 - cx - bx;
+  const cy = 3 * 0.1;
+  const by = 3 * (1 - 0.1) - cy;
+  const ay = 1 - cy - by;
+
+  let lo = 0;
+  let hi = 1;
+  let t = fraction;
+  for (let i = 0; i < 20; i += 1) {
+    const x = ((ax * t + bx) * t + cx) * t;
+    if (x < fraction) lo = t;
+    else hi = t;
+    t = (lo + hi) / 2;
+  }
+  return ((ay * t + by) * t + cy) * t;
+};
+
+/*
+ * idle   — in the flow, no inline geometry.
+ * pinned — position:fixed at an explicit pixel rect. Both ends of the animation
+ *          are this shape, which is the whole point: a transition can only carry
+ *          a property whose endpoints are interpolable values in the same
+ *          positioning scheme. Going straight from the in-flow box to the
+ *          viewport box straddles two schemes, so `position` jumped, `top`/`left`
+ *          went auto→0 and `width` auto→100vw — none of which interpolate — and
+ *          height was the only thing that actually animated.
+ * open    — position:fixed filling the viewport.
+ */
+type Phase = 'idle' | 'pinned' | 'open';
+
 /**
  * A collapsed expandable card is a 300px window onto content that is always laid
  * out at full-screen size, so the swatch strip below is sized to fill exactly that
@@ -45,41 +105,109 @@ const PaletteCard = ({
   onCollapse: () => void;
 }) => {
   /*
-   * Expansion is driven from HomePage, because the navbar changes with it — while
-   * a palette is expanded the navbar carries its back chevron and Edit. That is
-   * what removes the stacking problem entirely: the card never has to cover the
-   * chrome, so nothing needs to escape its layer.
-   *
-   * Geometry is absolute within .page, not fixed. `fixed` resolves against the
-   * nearest transformed ancestor rather than the viewport, and Framework7 puts
-   * transforms on pages and views — which is what left the card 42px down. .page
-   * is position:absolute, so it is a deterministic containing block.
+   * Expansion is driven from HomePage, because the controls change with it — while
+   * a palette is expanded the control layer carries its back chevron and Edit.
+   * That is what removes the stacking problem entirely: the card never has to
+   * cover the chrome, so nothing needs to escape its layer.
    */
   const cardElRef = useRef<HTMLDivElement>(null);
   const holderRef = useRef<HTMLDivElement>(null);
-  const [rect, setRect] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
-  const pendingDelete = useRef(false);
+  const innerRef = useRef<HTMLDivElement>(null);
+  const [phase, setPhase] = useState<Phase>('idle');
+  const [rect, setRect] = useState<Rect | null>(null);
 
-  const lifted = rect !== null || expanded;
+  const lifted = phase !== 'idle';
 
-  // Measure before the card leaves the flow, then let CSS carry it to full size.
-  useEffect(() => {
-    if (!expanded) return;
+  /*
+   * Opening, step 1: pin. useLayoutEffect, not useEffect — it runs before the
+   * browser paints, so React re-renders synchronously and the in-flow frame is
+   * never shown. The first painted frame is already the pinned one, sitting at
+   * exactly the pixels the row occupied, so there is nothing to see yet.
+   */
+  useLayoutEffect(() => {
+    if (!expanded || phase !== 'idle') return;
     const el = cardElRef.current;
     if (!el) return;
-    // Viewport coordinates, to match position: fixed below.
-    const r = el.getBoundingClientRect();
-    setRect({ top: r.top, left: r.left, width: r.width, height: r.height });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [expanded]);
+    setRect(readRect(el));
+    setPhase('pinned');
+  }, [expanded, phase]);
 
+  /*
+   * Opening, step 2: release. The pinned rect has to be the *painted* style
+   * before the viewport rect replaces it, otherwise the browser coalesces the two
+   * into one style change and there is no start value to animate from. Two frames
+   * of rAF: the first lands after the pinned paint, the second is the frame the
+   * new values are applied in.
+   */
   useEffect(() => {
-    if (!expanded) setRect(null);
-  }, [expanded]);
+    if (!expanded || phase !== 'pinned') return;
+    let inner = 0;
+    const outer = requestAnimationFrame(() => {
+      inner = requestAnimationFrame(() => setPhase('open'));
+    });
+    return () => {
+      cancelAnimationFrame(outer);
+      cancelAnimationFrame(inner);
+    };
+  }, [expanded, phase]);
+
+  /*
+   * Closing, step 1: aim. The holder is still reserving the row's space, so its
+   * rect is precisely where the card has to land — no need to guess, and it is
+   * correct even if the list scrolled or changed length while the card was open.
+   */
+  useLayoutEffect(() => {
+    if (expanded || phase !== 'open') return;
+    const holder = holderRef.current;
+    if (!holder) {
+      setPhase('idle');
+      setRect(null);
+      return;
+    }
+    setRect(readRect(holder));
+    setPhase('pinned');
+
+    /*
+     * Unwind the scroll alongside the geometry. The collapsed card is a window
+     * onto the top of the content — the swatch strip — so a card closed from
+     * halfway down the colour list has to travel back to 0, not hold its offset.
+     *
+     * Driven here rather than left to the class change, because `.is-open` is
+     * what grants `.pcard-inner` its `overflow: auto`; when that comes off, the
+     * offset is dropped rather than animated and the content jumps to the top
+     * before the box has started shrinking. scrollTop is read now, while the
+     * scroller is still open, and written every frame from then on — which also
+     * overrides the drop, whenever in the commit it happens.
+     */
+    const inner = innerRef.current;
+    const from = inner?.scrollTop ?? 0;
+    if (!inner || from === 0) return;
+
+    const start = performance.now();
+    let frame = requestAnimationFrame(function step(now) {
+      const fraction = Math.min(1, (now - start) / LIFT_MS);
+      inner.scrollTop = from * (1 - ease(fraction));
+      if (fraction < 1) frame = requestAnimationFrame(step);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [expanded, phase]);
+
+  /*
+   * Closing, step 2: rejoin the flow, but only once the transition has finished —
+   * dropping the inline geometry any earlier would snap the card home instead of
+   * animating it there.
+   */
+  useEffect(() => {
+    if (expanded || phase !== 'pinned') return;
+    const timer = setTimeout(() => {
+      setPhase('idle');
+      setRect(null);
+    }, LIFT_MS);
+    return () => clearTimeout(timer);
+  }, [expanded, phase]);
 
   const deletePalette = () => {
     f7.dialog.confirm(`Delete “${palette.name}”? This cannot be undone.`, 'Delete palette', () => {
-      pendingDelete.current = true;
       onCollapse();
       store.dispatch('deletePalette', { id: palette.id });
     });
@@ -104,39 +232,44 @@ const PaletteCard = ({
   const items: PaletteItem[] = flattenPalette(palette);
 
   /*
-   * Fixed, so the expanded size comes from the viewport. Absolute resolved against
-   * .page-content — the scroller — whose box is only as tall as the list, so with
-   * a few palettes `bottom: 0` landed above the bottom of the screen and the card
-   * was cut off.
+   * Fixed in both lifted phases, so the endpoints differ only in their values.
+   * margin:0 because the measured rect is a border box — the row's margins are
+   * already baked into rect.top/left, and leaving .pcard's margin on would offset
+   * the card by them a second time.
+   *
+   * dvh, not vh: in a browser tab 100vh includes the strip behind Safari's
+   * toolbar, which would run the card's bottom edge underneath it. Installed as a
+   * PWA the two are identical.
    */
-  const style: React.CSSProperties = !rect
-    ? {}
-    : expanded
-      ? {
-          position: 'fixed',
-          margin: 0,
-          top: 0,
-          left: 0,
-          width: '100vw',
-          height: '100dvh',
-        }
-      : {
-          position: 'fixed',
-          margin: 0,
-          top: rect.top,
-          left: rect.left,
-          width: rect.width,
-          height: rect.height,
-        };
+  const style: React.CSSProperties =
+    phase === 'idle' || !rect
+      ? {}
+      : phase === 'open'
+        ? {
+            position: 'fixed',
+            margin: 0,
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100dvh',
+          }
+        : {
+            position: 'fixed',
+            margin: 0,
+            top: rect.top,
+            left: rect.left,
+            width: rect.width,
+            height: rect.height,
+          };
 
   const card = (
     <div
       ref={cardElRef}
-      className={`pcard${expanded ? ' is-open' : ''}${lifted ? ' is-lifted' : ''}`}
+      className={`pcard${phase === 'open' ? ' is-open' : ''}${lifted ? ' is-lifted' : ''}`}
       style={style}
-      onClick={expanded ? undefined : onExpand}
+      onClick={lifted ? undefined : onExpand}
     >
-      <div className="pcard-inner">
+      <div ref={innerRef} className="pcard-inner">
         {/*
           Full-height flex column so the footer can sit at the bottom of a short
           card via margin-top:auto, and stick to the viewport bottom on a long one.

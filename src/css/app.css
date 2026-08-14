@@ -99,9 +99,14 @@
   box-shadow: var(--f7-card-box-shadow);
 
   /*
-   * Lifted = absolute within .page; that is when geometry animates. No z-index
-   * war: the navbar carries this palette's own controls while it is expanded, so
-   * the card has nothing to cover.
+   * Lifted = position:fixed at an explicit pixel rect, first at the row's own
+   * geometry and then at the viewport's. Only these four change between the two,
+   * and both endpoints are lengths, so all four interpolate. `right` and `bottom`
+   * are deliberately absent — they are never set, and listing them only invited
+   * an auto endpoint that could not animate.
+   *
+   * 300ms is duplicated as LIFT_MS in home.tsx, which waits it out before letting
+   * the card rejoin the flow.
    */
   &.is-lifted {
     /* Above the collapsed cards, which are z-index 2. */
@@ -109,8 +114,6 @@
     transition:
       top 300ms,
       left 300ms,
-      right 300ms,
-      bottom 300ms,
       width 300ms,
       height 300ms,
       border-radius 300ms;

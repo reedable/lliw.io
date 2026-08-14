@@ -104,7 +104,8 @@
    * the card has nothing to cover.
    */
   &.is-lifted {
-    z-index: 1;
+    /* Above the collapsed cards, which are z-index 2. */
+    z-index: 3;
     transition:
       top 300ms,
       left 300ms,

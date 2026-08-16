@@ -5,8 +5,8 @@
   "lang": "en-US",
   "start_url": "/lliw.io/",
   "display": "standalone",
-  "background_color": "#EE350F",
-  "theme_color": "#EE350F",
+  "background_color": "#c8102e",
+  "theme_color": "#c8102e",
   "icons": [
     {
       "src": "/lliw.io/icons/128x128.png",

@@ -56,6 +56,19 @@
  */
 :root {
   --lliw-tabbar-gap: 16px;
+
+  /* Space between the bottom of the .controls row and the top of the h1. */
+  --lliw-title-gap: 12px;
+
+  /*
+   * Palette grid spacing. Two independent knobs, which is the point of moving off
+   * per-card margins: margins on grid items neither collapse nor merge across a
+   * cell boundary, so a 20px card margin meant 20px at the page edge but 40px
+   * between columns, and 30px meant 60px between rows. Outer and inner were
+   * locked at 1:2 and could not be set separately.
+   */
+  --lliw-card-inset: 20px; /* page edge to card */
+  --lliw-card-gap: 20px; /* card to card */
 }
 
 .toolbar-bottom .toolbar-inner {
@@ -92,8 +105,14 @@
   z-index: 2;
   overflow: hidden;
   height: var(--palette-card-height);
-  margin: var(--f7-card-expandable-margin-vertical)
-    calc(var(--f7-card-expandable-margin-horizontal) + var(--f7-safe-area-left));
+  /*
+   * No margin. Spacing is the grid's: --lliw-card-gap between cards,
+   * --lliw-card-inset as the container's padding at the page edge. The margin
+   * this replaces also folded in --f7-safe-area-left, which put the inset on both
+   * sides of every card — invisible in one column, but in a grid it met itself
+   * down the middle, 20 + 59 twice over, as a ~158px trench in landscape.
+   */
+  margin: 0;
   background: var(--f7-card-expandable-bg-color);
   border-radius: var(--f7-card-expandable-border-radius);
   box-shadow: var(--f7-card-box-shadow);
@@ -230,10 +249,26 @@
   transform: translateY(calc(-100% - var(--f7-safe-area-top) - 40px));
 }
 
-/* The app name is page content now, not a navbar title. */
+/*
+ * The app name is page content now, not a navbar title, so it has to clear the
+ * .controls layer itself.
+ *
+ * Derived rather than guessed: .controls starts at --f7-safe-area-top + 16px and
+ * is --f7-searchbar-input-height tall, so its bottom edge is the first three
+ * terms below and --lliw-title-gap is the only thing left to choose. The value
+ * was previously a flat 72px, which encoded the same sum with the safe area
+ * added separately — correct on a device but opaque, and it read as an arbitrary
+ * constant precisely when the safe area made it large.
+ */
 .home-title {
   margin: 0;
-  padding: calc(var(--f7-safe-area-top) + 72px) 16px 8px;
+  /* No horizontal padding: the grid container's --lliw-card-inset already holds
+     it, so the title lines up with the cards' left edge instead of doubling it. */
+  padding: calc(
+      var(--f7-safe-area-top) + 16px + var(--f7-searchbar-input-height) +
+        var(--lliw-title-gap)
+    )
+    0 8px;
   font-size: 34px;
   font-weight: 700;
 }
@@ -261,6 +296,21 @@
     grid-template-columns: 1fr;
     /* Rows sized by the cards, not stretched to fill the page. */
     align-content: start;
+
+    gap: var(--lliw-card-gap);
+
+    /*
+     * The outer inset, including the display cutout — a property of the page, so
+     * held once here rather than by each card. Left and right are separate
+     * because the cutout is only on one side in landscape; F7 resolves these from
+     * env() on .views.safe-areas, which this inherits.
+     *
+     * padding-top is deliberately not set: F7 composes it from the navbar,
+     * toolbar, subnavbar and searchbar offsets, and the h1 handles the space
+     * under the controls.
+     */
+    padding-left: calc(var(--f7-safe-area-left) + var(--lliw-card-inset));
+    padding-right: calc(var(--f7-safe-area-right) + var(--lliw-card-inset));
 
     > .home-title {
       grid-column: 1 / -1;
@@ -313,9 +363,12 @@ html.pcard-open .views > .tabbar {
   /* Only while the card is lifted out of the flow — otherwise it doubles the row. */
   &.is-holding {
     display: block;
+    /*
+     * Height only. The grid's own gap spaces this the same as the card it stands
+     * in for, so unlike the margin version there is nothing here that has to be
+     * kept in sync with .pcard.
+     */
     height: var(--palette-card-height);
-    margin: var(--f7-card-expandable-margin-vertical)
-      calc(var(--f7-card-expandable-margin-horizontal) + var(--f7-safe-area-left));
   }
 }
 
@@ -356,6 +409,22 @@ html.pcard-open .views > .tabbar {
     display: flex;
     min-height: 0;
 
+    /*
+     * 100ms. The card's own geometry is 300ms, and matching it read as three
+     * things happening at once — moving, uncropping and expanding, all equally
+     * perceptible. Sweeping 300 → 200 → 150 → 100 → 80 → none, `none` gave the
+     * card a stable base to expand from but was abrupt at three columns, where
+     * the scale step is largest.
+     *
+     * 80 and 100 were then run as a blind A/B, five rounds, both acceptable every
+     * round and guesses at chance. So this is the last value tested rather than a
+     * winner — do not treat it as tuned, and do not re-litigate it without new
+     * evidence.
+     *
+     * See the @container blocks below for what is being transitioned.
+     */
+    transition: transform 100ms;
+
     > div {
       flex: 1 1 0;
     }
@@ -392,6 +461,48 @@ html.pcard-open .views > .tabbar {
     .pcard.is-open & {
       pointer-events: auto;
     }
+  }
+}
+
+/*
+ * Fit the swatch strip to a multi-column card.
+ *
+ * .pcard-inner is 100vw and merely clipped by the card — that is what keeps the
+ * content from re-laying-out during the expand animation. Harmless in one column,
+ * but at two or three the card is a fraction of the viewport and the strip is cut
+ * off. A crop is honest for the content below it, which is a window onto the
+ * expanded page; the strip is the exception, because it *is* the palette.
+ *
+ * Scaled rather than resized, so no layout runs. The blocks are flat colour, so
+ * the scale costs nothing visually, and the palette name sits outside this
+ * element and stays undistorted.
+ *
+ * The factor is 1/columns and the translate is -(columns - 1) x 50vw. With the
+ * default centre origin at x0 = 50vw, f(x) = x0 + k(x - x0 + t); solving f(0) = 0
+ * gives t = x0(k - 1)/k. Both pairs below collapse to f(x) = kx, so the left edge
+ * stays pinned at 0 and no transform-origin is needed.
+ *
+ * Breakpoints are the grid's own — if a column count moves, its factor moves with
+ * it. Keyed to :not(.is-open) rather than the container alone, because an open
+ * card fills the viewport whatever the column count. is-open lands a frame after
+ * mount, which is what makes this transition rather than snap, and it runs in
+ * reverse on collapse when the class comes off at the pinned phase.
+ *
+ * Deliberately untuned: 1/columns is the viewport's share, and the card is a
+ * little narrower than that once --lliw-card-inset, --lliw-card-gap and the
+ * landscape safe area are taken out. So the strip overshoots and stays slightly
+ * cropped — the safe direction, since undershooting would show card background
+ * beyond its right edge.
+ */
+@container palettes (min-width: 700px) {
+  .pcard:not(.is-open) .palette-swatches {
+    transform: scaleX(0.5) translateX(-50vw);
+  }
+}
+
+@container palettes (min-width: 1050px) {
+  .pcard:not(.is-open) .palette-swatches {
+    transform: scaleX(0.3333) translateX(-100vw);
   }
 }
 

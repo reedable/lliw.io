@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Pagination } from 'swiper/modules';
 import 'swiper/css';
@@ -13,6 +13,7 @@ import {
   Link,
   List,
   ListInput,
+  f7,
   useStore,
 } from 'framework7-react';
 import type { Router } from 'framework7/types';
@@ -109,6 +110,21 @@ const ColorPage = ({ f7route }: ColorPageProps) => {
    */
   const [activeId, setActiveId] = useState(colorId ?? '');
 
+  /*
+   * Framework7 owns the selected-tab pill: it appends a `.tab-link-highlight`
+   * span into the `.toolbar-pane` and positions it from whichever `.tab-link`
+   * carries `tab-link-active` (components/toolbar/toolbar.js). It is imperative
+   * — nothing watches the class — so switching filters has to ask it to move.
+   *
+   * The element is taken from the click rather than a ref because F7's Toolbar
+   * component does not forward one.
+   */
+  const toolbarElRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (toolbarElRef.current) f7.toolbar.setHighlight(toolbarElRef.current);
+  }, [filter]);
+
   const palette = palettes.find((p) => p.id === paletteId);
   const color =
     (palette && findColor(palette, activeId)) ??
@@ -174,19 +190,27 @@ const ColorPage = ({ f7route }: ColorPageProps) => {
 
       <Toolbar tabbar bottom>
         {/*
-          Deliberately NOT class "tab-link", and href={false}. F7 delegates every
-          `.tab-link` click and calls app.tab.show() whenever the href starts with
-          "#" — and Link defaults href to "#". With those, each filter tap drove
-          the app's real tab system and re-showed the app tabbar. These are plain
-          buttons; the filter is React state only.
+          Real `.tab-link`s, so F7 draws and animates its own selection pill
+          instead of us painting a background on the link. href={false} is what
+          makes that safe: F7's delegated handler only calls app.tab.show() when
+          the link has an href starting with "#" or a data-tab attribute
+          (components/tabs/tabs.js), and Link defaults href to "#". With the
+          default, every filter tap drove the app's real tab system and re-showed
+          the app tabbar. Without an href, the handler is a no-op and these stay
+          plain buttons whose state is React's.
         */}
         <ToolbarPane>
           {FILTERS.map((f) => (
             <Link
               key={f}
               href={false}
-              className={f === filter ? 'color-filter color-filter-active' : 'color-filter'}
-              onClick={() => setFilter(f)}
+              className={f === filter ? 'tab-link tab-link-active' : 'tab-link'}
+              onClick={(e: React.MouseEvent) => {
+                toolbarElRef.current = (e.currentTarget as HTMLElement).closest<HTMLElement>(
+                  '.toolbar',
+                );
+                setFilter(f);
+              }}
             >
               {f}
             </Link>

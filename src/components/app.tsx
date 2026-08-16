@@ -7,7 +7,16 @@ const MyApp = () => {
   // Framework7 Parameters
   const f7params = {
     name: 'lliw.io', // App name
-    theme: 'auto', // Automatic theme detection
+    /*
+     * Read once, at construction. F7 computes app.theme in its constructor and
+     * stamps it on <html> with `removeClass('ios md').addClass(app.theme)` — it
+     * is never consulted again, so changing this setting only takes effect on a
+     * reload. Settings prompts for one.
+     *
+     * 'auto' is passed straight through and resolved by F7 as
+     * `device.ios ? 'ios' : 'md'`.
+     */
+    theme: store.state.settings.theme,
 
     // App store
     store: store,

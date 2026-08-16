@@ -151,9 +151,11 @@
  */
 .controls {
   position: absolute;
-  top: calc(var(--f7-safe-area-top) + 8px);
-  left: 8px;
-  right: 8px;
+  top: calc(var(--f7-safe-area-top) + 16px);
+  /* 16px matches --f7-navbar-inner-padding-left/right on iOS, so these line up
+     with the back link and title on the color page's navbar. */
+  left: 16px;
+  right: 16px;
   z-index: 500;
   height: var(--f7-searchbar-input-height);
   pointer-events: none;
@@ -162,6 +164,15 @@
 .control {
   position: absolute;
   top: 0;
+
+  /*
+   * These stand in for navbar links, so they take the navbar's colour token
+   * rather than the plain-link default. `a { color: var(--f7-theme-color) }`
+   * paints any link blue; F7's iOS 26 styling overrides that inside bars with
+   * `--f7-navbar-link-color: var(--f7-bars-text-color)` — near-black, and white
+   * in dark mode. Not in a navbar, these never picked that up.
+   */
+  color: var(--f7-navbar-link-color);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -227,6 +238,49 @@
   font-weight: 700;
 }
 
+/*
+ * Palette grid. The query is on the page's own inline size rather than the
+ * viewport's, so the column count follows the space the cards actually have —
+ * which is what changes under an iPad split view or Stage Manager, where the
+ * window narrows but the viewport media query would not.
+ *
+ * Caveat, deliberate: `container-type` applies layout containment, and a
+ * layout-contained element is the containing block for `position: fixed`
+ * descendants. The expanded card is fixed. It resolves against .page instead of
+ * the viewport from here on — which is correct only because .page is
+ * position:absolute filling .view, and .view fills the viewport, so the two
+ * boxes coincide. If .page ever gains an offset or an inset, the lifted card
+ * will move with it and the pinned rect (measured in viewport coordinates via
+ * getBoundingClientRect) will no longer line up.
+ */
+.page[data-name='home'] {
+  container: palettes / inline-size;
+
+  > .page-content {
+    display: grid;
+    grid-template-columns: 1fr;
+    /* Rows sized by the cards, not stretched to fill the page. */
+    align-content: start;
+
+    > .home-title {
+      grid-column: 1 / -1;
+    }
+
+    /*
+     * Breakpoints are chosen, not derived: a palette card stops reading as a
+     * swatch strip much below ~320px, and the cards keep their own 16px side
+     * margins, so two columns need roughly 700px of page and three roughly 1050px.
+     */
+    @container palettes (min-width: 700px) {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    @container palettes (min-width: 1050px) {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+}
+
 html.pcard-open .views > .tabbar {
   transform: translate3d(0, calc(100% + 32px), 0);
   transition: transform 300ms;
@@ -247,10 +301,18 @@ html.pcard-open .views > .tabbar {
  * resting card.
  */
 .pcard-holder {
-  height: 0;
+  /*
+   * display:none, not height:0. Under the grid these are siblings of the card,
+   * so a zero-height holder would still claim its own cell and leave a gap
+   * beside every palette. Removed from the box tree instead, which keeps the
+   * count at exactly one grid item per palette: the card while it is idle, the
+   * holder while the card is fixed and therefore out of flow.
+   */
+  display: none;
 
-  /* Only while the card is portalled away — otherwise it would double the row. */
+  /* Only while the card is lifted out of the flow — otherwise it doubles the row. */
   &.is-holding {
+    display: block;
     height: var(--palette-card-height);
     margin: var(--f7-card-expandable-margin-vertical)
       calc(var(--f7-card-expandable-margin-horizontal) + var(--f7-safe-area-left));
@@ -356,29 +418,15 @@ html.pcard-open .views > .tabbar {
 }
 
 /*
- * Plain buttons, not F7 tab-links — see the comment in color.tsx.
+ * The conformance filters carry no styling of their own. They are real
+ * `.tab-link`s, so Framework7's tabbar rules colour them and its
+ * `.tab-link-highlight` span draws the selected pill — inset 4px from the track
+ * and inheriting its radius, which is why it stays inside the 32px curve.
  *
- * Selectors are `.toolbar .color-filter` (0,2,0) on purpose: `.toolbar a` is
- * (0,1,1) and already paints every toolbar link in --f7-theme-color, so a bare
- * `.color-filter-active { color: ... }` both loses on specificity and would be the
- * same colour as the unselected ones anyway. The selected tab has to be readable
- * at a glance — it reports which conformance level is on screen.
+ * What was here before: a background painted directly on the active link, edge
+ * to edge at border-radius 8px. Against a 32px pill the corners fell outside the
+ * curve and bled past it at both ends.
  */
-.toolbar .color-filter {
-  flex: 1 1 0;
-  justify-content: center;
-  border-radius: 8px;
-  font-weight: 400;
-  color: var(--f7-tabbar-link-inactive-color);
-  opacity: 0.55;
-}
-
-.toolbar .color-filter-active {
-  font-weight: 700;
-  color: var(--f7-tabbar-link-active-color);
-  background-color: rgba(128, 128, 128, 0.16);
-  opacity: 1;
-}
 
 .color-hero {
   height: 220px;

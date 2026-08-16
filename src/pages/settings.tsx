@@ -12,9 +12,15 @@ import {
   useStore,
 } from 'framework7-react';
 import store, { buildExport, parseImport } from '../js/store';
-import type { ConformanceSetting, Palette, Settings } from '../js/store';
+import type { ConformanceSetting, Palette, Settings, ThemeSetting } from '../js/store';
 
 const CONFORMANCE_OPTIONS: ConformanceSetting[] = ['AAA', 'AA', 'A'];
+
+const THEME_OPTIONS: { value: ThemeSetting; label: string }[] = [
+  { value: 'auto', label: 'Automatic' },
+  { value: 'ios', label: 'iOS' },
+  { value: 'md', label: 'Material' },
+];
 
 const SettingsPage = () => {
   const settings = useStore('settings') as Settings;
@@ -45,11 +51,40 @@ const SettingsPage = () => {
     f7.dialog.alert(`${added} added, ${replaced} replaced.`, 'Imported');
   };
 
+  /*
+   * What F7 actually resolved to, read off the class it stamps on <html> at init.
+   * Shown because 'Automatic' is a guess — on iPadOS, F7 matches window.screen
+   * against a hardcoded resolution list — and without this the user has no way to
+   * see which way the guess went.
+   */
+  const activeTheme = document.documentElement.classList.contains('md') ? 'Material' : 'iOS';
+
+  const changeTheme = (theme: ThemeSetting) => {
+    store.dispatch('setSettings', { theme });
+    // F7 reads the theme once, in its constructor, and stamps it on <html>. There
+    // is no supported way to restyle a running app, so this needs a fresh boot.
+    f7.dialog.confirm('Reload now to apply it?', 'Theme changed', () => location.reload());
+  };
+
   return (
     <Page name="settings">
       <Navbar title="Settings" />
 
       <List strong inset dividersIos>
+        <ListInput
+          type="select"
+          label="Theme"
+          value={settings.theme}
+          info={`Currently rendering: ${activeTheme}`}
+          onChange={(e: any) => changeTheme(e.target.value as ThemeSetting)}
+        >
+          {THEME_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </ListInput>
+
         <ListInput
           type="select"
           label="Default WCAG conformance"

@@ -129,6 +129,11 @@ const PaletteCard = ({
   // HomePage builds a fresh `collapse` closure every time it renders.
   const collapseRef = useRef(onCollapse);
   collapseRef.current = onCollapse;
+
+  /** In-flight scroll unwind, cancelled by a re-open or by unmount — never by a
+   *  phase change, which is the effect's own doing rather than an interruption. */
+  const unwindRef = useRef(0);
+  useEffect(() => () => cancelAnimationFrame(unwindRef.current), []);
   const [phase, setPhase] = useState<Phase>('idle');
   const [rect, setRect] = useState<Rect | null>(null);
 
@@ -144,6 +149,8 @@ const PaletteCard = ({
     if (!expanded || phase !== 'idle') return;
     const el = cardElRef.current;
     if (!el) return;
+    // Re-opened mid-collapse: the unwind no longer has anywhere to go.
+    cancelAnimationFrame(unwindRef.current);
     setRect(readRect(el));
     setPhase('pinned');
   }, [expanded, phase]);
@@ -199,13 +206,21 @@ const PaletteCard = ({
     const from = inner?.scrollTop ?? 0;
     if (!inner || from === 0) return;
 
+    /*
+     * The handle lives in a ref, and this effect deliberately returns no cleanup.
+     * setPhase above is in this effect's own dependencies, so React tears the
+     * effect down on the very next commit — a cleanup here would cancel the tween
+     * before its first frame, which is exactly what it used to do. Cancellation
+     * is owned instead by whatever legitimately interrupts it: a re-open, or
+     * unmount.
+     */
+    cancelAnimationFrame(unwindRef.current);
     const start = performance.now();
-    let frame = requestAnimationFrame(function step(now) {
+    unwindRef.current = requestAnimationFrame(function step(now) {
       const fraction = Math.min(1, (now - start) / LIFT_MS);
       inner.scrollTop = from * (1 - ease(fraction));
-      if (fraction < 1) frame = requestAnimationFrame(step);
+      if (fraction < 1) unwindRef.current = requestAnimationFrame(step);
     });
-    return () => cancelAnimationFrame(frame);
   }, [expanded, phase]);
 
   /*

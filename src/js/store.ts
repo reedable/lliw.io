@@ -87,9 +87,19 @@ export const createGroupId = () => `g${randomSuffix()}`;
 /** The conformance tab the colour page opens on. */
 export type ConformanceSetting = 'AAA' | 'AA' | 'A';
 
+/*
+ * Which Framework7 theme to render. 'auto' hands the decision back to F7, which
+ * resolves it as `device.ios ? 'ios' : 'md'` — and its iPad detection matches
+ * window.screen against a hardcoded list of resolutions, because iPadOS reports
+ * platform 'MacIntel'. An iPad whose screen is not on that list gets Material
+ * Design. This setting exists so that guess can be overridden.
+ */
+export type ThemeSetting = 'auto' | 'ios' | 'md';
+
 export interface Settings {
   defaultConformance: ConformanceSetting;
   showBaseColors: boolean;
+  theme: ThemeSetting;
 }
 
 interface AppState {
@@ -102,6 +112,7 @@ const SETTINGS_KEY = 'palette.settings';
 const DEFAULT_SETTINGS: Settings = {
   defaultConformance: 'AAA',
   showBaseColors: true,
+  theme: 'auto',
 };
 
 /*
@@ -125,6 +136,9 @@ const loadSettings = (): Settings => {
         typeof parsed.showBaseColors === 'boolean'
           ? parsed.showBaseColors
           : DEFAULT_SETTINGS.showBaseColors,
+      theme: (['auto', 'ios', 'md'] as const).includes(parsed.theme as ThemeSetting)
+        ? (parsed.theme as ThemeSetting)
+        : DEFAULT_SETTINGS.theme,
     };
   } catch {
     // Unreadable or unparseable storage should not stop the app booting.

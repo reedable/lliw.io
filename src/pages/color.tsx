@@ -20,12 +20,14 @@ import type { Router } from 'framework7/types';
 import store, { allColors, findColor } from '../js/store';
 import type { Palette, Settings } from '../js/store';
 import { contrastRatio } from '../js/contrast';
+import { useSwipeDown } from '../js/useSwipeDown';
 
 /** #rgb or #rrggbb. Anything else is treated as still being typed. */
 const HEX = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
 
 interface ColorPageProps {
   f7route: Router.Route;
+  f7router: Router.Router;
 }
 
 // Every palette is implicitly paired against these two as well.
@@ -94,7 +96,7 @@ const Combo = ({ background, foreground, label, hex }: ComboProps) => (
   </div>
 );
 
-const ColorPage = ({ f7route }: ColorPageProps) => {
+const ColorPage = ({ f7route, f7router }: ColorPageProps) => {
   const { paletteId, colorId } = f7route.params;
   const palettes = useStore('palettes') as Palette[];
   const settings = useStore('settings') as Settings;
@@ -136,6 +138,24 @@ const ColorPage = ({ f7route }: ColorPageProps) => {
    * carrying the previous field's text across.
    */
   const [draft, setDraft] = useState<{ id: string; text: string } | null>(null);
+
+  /*
+   * Swipe down on the hero to go back to the palette, the same gesture that
+   * collapses an expanded card on the home page.
+   *
+   * The element is the Swiper's own root, taken from onSwiper rather than a ref
+   * prop: swiper/react types `ref` as SwiperRef, not the element. That is safe
+   * to bind to — Swiper resolves the drag angle once past 5px and, for a
+   * horizontal swiper, hands back any gesture steeper than its 45° touchAngle
+   * (shared/swiper-core.mjs), so a downward drag never competes with a slide.
+   *
+   * The scroller is Framework7's `.page-content`, which is not exposed as a ref,
+   * so it is walked up to from the hero at touchstart.
+   */
+  const heroRef = useRef<HTMLElement | null>(null);
+  useSwipeDown(heroRef, () => f7router.back(), {
+    getScroller: () => heroRef.current?.closest<HTMLElement>('.page-content'),
+  });
 
   // The colour can vanish while this page is open — deleted via swipe on the card
   // underneath, or the palette itself removed.
@@ -235,6 +255,9 @@ const ColorPage = ({ f7route }: ColorPageProps) => {
          * dynamicMainBullets is how many stay full-size; the rest taper off.
          */
         pagination={{ clickable: true, dynamicBullets: true, dynamicMainBullets: 3 }}
+        onSwiper={(swiper) => {
+          heroRef.current = swiper.el;
+        }}
         initialSlide={Math.max(
           0,
           flat.findIndex((c) => c.id === color.id),

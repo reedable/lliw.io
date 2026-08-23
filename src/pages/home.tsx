@@ -22,22 +22,13 @@ import store, {
   flattenPalette,
 } from '../js/store';
 import type { Palette, PaletteItem } from '../js/store';
+import { useSwipeDown } from '../js/useSwipeDown';
 
 // Placeholder until Add opens a real picker: the colour a new entry starts as.
 const DEFAULT_COLOR = '#3b82f6';
 
 /** Must match the 300ms in `.pcard.is-lifted`'s transition in app.css. */
 const LIFT_MS = 300;
-
-/*
- * Swipe-down-to-collapse, measured on the hero. Either a deliberate drag of
- * SWIPE_DISTANCE, or a shorter flick of at least SWIPE_MIN travelling faster than
- * SWIPE_VELOCITY — the second is what makes a quick flick work without demanding
- * the full distance, which is how iOS dismissals read.
- */
-const SWIPE_DISTANCE = 64;
-const SWIPE_MIN = 16;
-const SWIPE_VELOCITY = 0.5; // px per ms
 
 interface Rect {
   top: number;
@@ -124,11 +115,6 @@ const PaletteCard = ({
   const holderRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLDivElement>(null);
-
-  // Kept in a ref so the listeners below bind once per open, not once per render:
-  // HomePage builds a fresh `collapse` closure every time it renders.
-  const collapseRef = useRef(onCollapse);
-  collapseRef.current = onCollapse;
 
   /** In-flight scroll unwind, cancelled by a re-open or by unmount — never by a
    *  phase change, which is the effect's own doing rather than an interruption. */
@@ -238,69 +224,14 @@ const PaletteCard = ({
   }, [expanded, phase]);
 
   /*
-   * Swipe down on the hero to collapse. Native listeners rather than React props
-   * because touchmove has to be non-passive: at scrollTop 0 a downward drag is
-   * otherwise claimed by the scroller and rubber-bands the card's content, and
-   * only preventDefault stops that.
-   *
-   * Bound only while phase is 'open', so a collapsed card is untouched — there,
-   * a vertical drag belongs to the page scroller and a tap belongs to onExpand.
+   * Swipe down on the hero to collapse. Bound only while phase is 'open', so a
+   * collapsed card is untouched — there, a vertical drag belongs to the page
+   * scroller and a tap belongs to onExpand.
    */
-  useEffect(() => {
-    if (phase !== 'open') return;
-    const hero = heroRef.current;
-    if (!hero) return;
-
-    let startX = 0;
-    let startY = 0;
-    let startAt = 0;
-    let tracking = false;
-
-    const onStart = (e: TouchEvent) => {
-      // Anywhere but the very top and the gesture is a scroll, not a dismissal.
-      if ((innerRef.current?.scrollTop ?? 0) > 0) return;
-      const touch = e.touches[0];
-      startX = touch.clientX;
-      startY = touch.clientY;
-      startAt = e.timeStamp;
-      tracking = true;
-    };
-
-    const onMove = (e: TouchEvent) => {
-      if (!tracking) return;
-      const touch = e.touches[0];
-      const dx = touch.clientX - startX;
-      const dy = touch.clientY - startY;
-      // Mostly sideways: let it go, so a swipeout on a row still starts here.
-      if (Math.abs(dx) > Math.abs(dy)) {
-        tracking = false;
-        return;
-      }
-      if (dy > 0) e.preventDefault();
-    };
-
-    const onEnd = (e: TouchEvent) => {
-      if (!tracking) return;
-      tracking = false;
-      const touch = e.changedTouches[0];
-      const dy = touch.clientY - startY;
-      const elapsed = e.timeStamp - startAt || 1;
-      if (dy >= SWIPE_DISTANCE || (dy >= SWIPE_MIN && dy / elapsed >= SWIPE_VELOCITY)) {
-        collapseRef.current();
-      }
-    };
-
-    hero.addEventListener('touchstart', onStart, { passive: true });
-    hero.addEventListener('touchmove', onMove, { passive: false });
-    hero.addEventListener('touchend', onEnd, { passive: true });
-    hero.addEventListener('touchcancel', onEnd, { passive: true });
-    return () => {
-      hero.removeEventListener('touchstart', onStart);
-      hero.removeEventListener('touchmove', onMove);
-      hero.removeEventListener('touchend', onEnd);
-      hero.removeEventListener('touchcancel', onEnd);
-    };
-  }, [phase]);
+  useSwipeDown(heroRef, onCollapse, {
+    enabled: phase === 'open',
+    getScroller: () => innerRef.current,
+  });
 
   const deletePalette = () => {
     f7.dialog.confirm(`Delete “${palette.name}”? This cannot be undone.`, 'Delete palette', () => {

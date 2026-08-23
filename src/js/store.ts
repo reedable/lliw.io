@@ -1,37 +1,17 @@
-
 import { createStore } from 'framework7/lite';
 
-export interface PaletteColor {
-  id: string;
-  name: string;
-  value: string;
-}
-
-/** Colours live in groups, so a palette reads as sections rather than one long list. */
-export interface ColorGroup {
-  id: string;
-  name: string;
-  colors: PaletteColor[];
-}
-
-export interface Palette {
-  id: string;
-  name: string;
-  /** Colours before the first group header. Implicitly the leading bucket. */
-  ungrouped: PaletteColor[];
-  groups: ColorGroup[];
-}
-
-/*
- * The card renders one flat list whose rows are headers and colours as siblings,
- * so Framework7's sortable — whose indices are sibling-scoped — can move a colour
- * across groups and reposition a header. These two folds are the only place the
- * nested store shape and the flat rendered order meet. The flat form is derived
- * for render and for interpreting a drop; it is never stored.
- */
-export type PaletteItem =
-  | { kind: 'color'; color: PaletteColor }
-  | { kind: 'group'; group: ColorGroup };
+import { TERTIARY } from './colors';
+import { createColorId, createGroupId } from './ids';
+import { DEFAULT_GROUP_NAME, SEED_PALETTES } from './seed';
+import type {
+  ColorGroup,
+  ConformanceSetting,
+  Palette,
+  PaletteColor,
+  PaletteItem,
+  Settings,
+  ThemeSetting,
+} from './types';
 
 export const flattenPalette = (palette: Palette): PaletteItem[] => [
   ...palette.ungrouped.map((color): PaletteItem => ({ kind: 'color', color })),
@@ -42,7 +22,7 @@ export const flattenPalette = (palette: Palette): PaletteItem[] => [
 ];
 
 /** Walks the flat order back into groups: each header opens one, colours fill it. */
-export const rebuildPalette = (
+const rebuildPalette = (
   items: PaletteItem[],
 ): Pick<Palette, 'ungrouped' | 'groups'> => {
   const ungrouped: PaletteColor[] = [];
@@ -59,9 +39,6 @@ export const rebuildPalette = (
   return { ungrouped, groups };
 };
 
-/** The group migrated colours land in; every palette has at least this one. */
-export const DEFAULT_GROUP_NAME = 'Colors';
-
 /** Flattened view for callers that need every colour in order. */
 export const allColors = (palette: Palette): PaletteColor[] => [
   ...palette.ungrouped,
@@ -70,37 +47,6 @@ export const allColors = (palette: Palette): PaletteColor[] => [
 
 export const findColor = (palette: Palette, colorId: string): PaletteColor | undefined =>
   allColors(palette).find((c) => c.id === colorId);
-
-/*
- * Not crypto.randomUUID(): vite is configured with `server.host: true`, so the dev
- * app is reachable over plain http on a LAN address. That is not a secure context,
- * where crypto.randomUUID is undefined — it would work on localhost and break on a
- * phone. The caller generates the id so it can auto-expand the card it just made.
- */
-const randomSuffix = () =>
-  `${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`;
-
-export const createPaletteId = () => `p${randomSuffix()}`;
-export const createColorId = () => `c${randomSuffix()}`;
-export const createGroupId = () => `g${randomSuffix()}`;
-
-/** The conformance tab the colour page opens on. */
-export type ConformanceSetting = 'AAA' | 'AA' | 'A';
-
-/*
- * Which Framework7 theme to render. 'auto' hands the decision back to F7, which
- * resolves it as `device.ios ? 'ios' : 'md'` — and its iPad detection matches
- * window.screen against a hardcoded list of resolutions, because iPadOS reports
- * platform 'MacIntel'. An iPad whose screen is not on that list gets Material
- * Design. This setting exists so that guess can be overridden.
- */
-export type ThemeSetting = 'auto' | 'ios' | 'md';
-
-export interface Settings {
-  defaultConformance: ConformanceSetting;
-  showBaseColors: boolean;
-  theme: ThemeSetting;
-}
 
 interface AppState {
   palettes: Palette[];
@@ -155,19 +101,6 @@ const saveSettings = (settings: Settings) => {
 };
 
 const PALETTES_KEY = 'palette.palettes';
-
-const seedColors = (values: string[]): PaletteColor[] =>
-  values.map((value, i) => ({ id: createColorId(), name: `Color ${i + 1}`, value }));
-
-/** Used only when storage has never been written — not when it holds an empty list. */
-const seedGroup = (values: string[]): ColorGroup[] => [
-  { id: createGroupId(), name: DEFAULT_GROUP_NAME, colors: seedColors(values) },
-];
-
-const SEED_PALETTES: Palette[] = [
-  { id: 'p2', name: 'Citrus', ungrouped: [], groups: seedGroup(['#fec89a', '#ffd7ba', '#fec5bb', '#f8edeb', '#d8e2dc']) },
-  { id: 'p3', name: 'Forest', ungrouped: [], groups: seedGroup(['#264653', '#2a9d8f', '#e9c46a', '#f4a261', '#e76f51']) },
-];
 
 const isPaletteColor = (value: unknown): value is PaletteColor => {
   if (typeof value !== 'object' || value === null) return false;
@@ -267,17 +200,17 @@ const savePalettes = (palettes: Palette[]) => {
  * v3: colours live in groups. v1 and v2 files still import — their flat list is
  *     wrapped in one group named "Colors".
  */
-export const EXPORT_FORMAT = 'lliw.io/palettes';
-export const EXPORT_VERSION = 3;
+const EXPORT_FORMAT = 'lliw.io/palettes';
+const EXPORT_VERSION = 3;
 
-export interface PaletteExport {
+interface PaletteExport {
   format: string;
   version: number;
   exportedAt: string;
   palettes: Palette[];
 }
 
-export type ImportResult = { ok: true; palettes: Palette[] } | { ok: false; reason: string };
+type ImportResult = { ok: true; palettes: Palette[] } | { ok: false; reason: string };
 
 export const buildExport = (palettes: Palette[]): PaletteExport => ({
   format: EXPORT_FORMAT,
@@ -401,7 +334,7 @@ const store = createStore({
           {
             id: createGroupId(),
             name: DEFAULT_GROUP_NAME,
-            colors: [{ id: createColorId(), name: 'Color 1', value: '#3b82f6' }],
+            colors: [{ id: createColorId(), name: 'Color 1', value: TERTIARY.gray }],
           },
         ],
       };

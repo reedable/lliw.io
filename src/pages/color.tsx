@@ -18,7 +18,7 @@ import {
 } from 'framework7-react';
 import type { Router } from 'framework7/types';
 import store, { allColors, findColor } from '../js/store';
-import type { Palette, Settings } from '../js/store';
+import type { Palette, Settings } from '../js/types';
 import { contrastRatio } from '../js/contrast';
 import { useSwipeDown } from '../js/useSwipeDown';
 

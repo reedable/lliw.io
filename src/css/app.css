@@ -507,28 +507,6 @@ html.pcard-open .views > .tabbar {
 }
 
 /*
- * Sticky, zero-height strip pinned to the top of .card-content. Zero height keeps
- * it out of the flex column's flow, so the hero still starts at the top; the two
- * controls are absolutely positioned against it.
- *
- * It has to live inside .card-content: F7 leaves an opened card carrying
- * scale(scaleX, scaleY) (card.js sets it on open and only resets it in onResize),
- * and compensates by giving .card-content an explicit size plus
- * scale(1/scaleX, 1/scaleY). Anything outside .card-content gets the scale with no
- * counter-scale — a 44px control renders ~114px tall on a 300px card opening to
- * full height.
- *
- * Both controls are meaningless until the card is open.
- */
-.palette-actions {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  height: 0;
-  flex: 0 0 auto;
-}
-
-/*
  * The conformance filters carry no styling of their own. They are real
  * `.tab-link`s, so Framework7's tabbar rules colour them and its
  * `.tab-link-highlight` span draws the selected pill — inset 4px from the track

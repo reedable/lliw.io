@@ -15,17 +15,19 @@ import {
   SwipeoutButton,
   useStore,
 } from 'framework7-react';
-import store, {
-  allColors,
-  createGroupId,
-  createPaletteId,
-  flattenPalette,
-} from '../js/store';
-import type { Palette, PaletteItem } from '../js/store';
+import store, { allColors, flattenPalette } from '../js/store';
+import { TERTIARY } from '../js/colors';
+import { createGroupId, createPaletteId } from '../js/ids';
+import type { Palette, PaletteItem } from '../js/types';
 import { useSwipeDown } from '../js/useSwipeDown';
 
-// Placeholder until Add opens a real picker: the colour a new entry starts as.
-const DEFAULT_COLOR = '#3b82f6';
+/*
+ * Placeholder until Add opens a real picker: the colour a new entry starts as.
+ * The mid gray clears AA against both black and white, which are on by default,
+ * so a first-run colour page has passing pairings to show rather than an empty
+ * list.
+ */
+const DEFAULT_COLOR = TERTIARY.gray;
 
 /** Must match the 300ms in `.pcard.is-lifted`'s transition in app.css. */
 const LIFT_MS = 300;

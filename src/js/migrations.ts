@@ -19,7 +19,7 @@ import { StoredPalettesSchema } from './types';
 import type { StoredPalettes } from './types';
 
 /*
- * The version ladder for `palette.palettes` and for export files.
+ * The version ladder for `lliw.palettes` and for export files.
  *
  * Adding a version is three edits, all in this file:
  *

@@ -40,7 +40,8 @@ export const PaletteSchema = z.object({
   groups: z.array(ColorGroupSchema),
 });
 
-/** What `palette.palettes` holds, and what an export file carries. */
+/** The stored payload, and what an export file carries. Where it is stored is
+    not this file's concern — see store.ts. */
 export const StoredPalettesSchema = z.object({
   schemaVersion: z.literal(SCHEMA_VERSION),
   palettes: z.array(PaletteSchema),

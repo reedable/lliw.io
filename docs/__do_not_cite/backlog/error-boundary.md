@@ -25,5 +25,5 @@ way to do.
 
 A boundary needs somewhere to send the user that does not depend on the thing
 that threw. Candidates: a static fallback with the export payload offered as a
-download so data can be rescued, or a reset that clears `palette.palettes` after
+download so data can be rescued, or a reset that clears `lliw.palettes` after
 confirmation. Neither designed.

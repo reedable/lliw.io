@@ -17,16 +17,6 @@ branches on the `no-toolbar` class, so calling `app.toolbar.hide()` loses the
 race. The explanation is worth keeping. It currently sits between two unrelated
 declarations, attached to neither of the two `noToolbar` usages it describes.
 
-## delete the localStorage key shim
-
-The keys were renamed `palette.*` -> `lliw.*`. `migrateKey` in
-`src/js/storage.ts`, its two call sites in `store.ts`, and the `LEGACY_*`
-constants are a one-time move and are meant to be deleted.
-
-Safe to delete once every browser holding data under the old keys has loaded the
-app at least once. At the time of writing that is two testers, so it is a
-question you can answer by asking them.
-
 ## vite.config.ts
 
 Left alone deliberately: `treeshake: false` and `assetsInlineLimit: 0`. See

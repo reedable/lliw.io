@@ -5,7 +5,6 @@ import { TERTIARY } from './colors';
 import { createColorId, createGroupId } from './ids';
 import { DEFAULT_GROUP_NAME, SEED_PALETTES } from './seed';
 import { readExportPayload, readPalettePayload } from './migrations';
-import { migrateKey } from './storage';
 import { SCHEMA_VERSION, SettingsSchema } from './types';
 import type {
   ColorGroup,
@@ -56,24 +55,8 @@ interface AppState {
   settings: Settings;
 }
 
-/*
- * The `palette.*` names are pre-rename, from when this project was called
- * palette. See storage.ts — the LEGACY_ constants and the migrateKey calls below
- * are a temporary shim and are meant to be deleted.
- */
 const SETTINGS_KEY = 'lliw.settings';
 const PALETTES_KEY = 'lliw.palettes';
-const LEGACY_SETTINGS_KEY = 'palette.settings';
-const LEGACY_PALETTES_KEY = 'palette.palettes';
-
-/*
- * Runs before the first read below. After it, nothing else in this file knows
- * the old keys ever existed.
- */
-if (typeof localStorage !== 'undefined') {
-  migrateKey(localStorage, LEGACY_SETTINGS_KEY, SETTINGS_KEY);
-  migrateKey(localStorage, LEGACY_PALETTES_KEY, PALETTES_KEY);
-}
 
 const DEFAULT_SETTINGS: Settings = {
   defaultConformance: 'AAA',

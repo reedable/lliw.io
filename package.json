@@ -2,13 +2,19 @@
   "name": "lliw.io",
   "private": true,
   "version": "1.1.0",
-  "description": "lliw.io",
-  "repository": "",
+  "description": "Colour palette tool with WCAG contrast checking, installable as a PWA.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/reedable/lliw.io.git"
+  },
+  "homepage": "https://reedable.github.io/lliw.io/",
   "license": "UNLICENSED",
   "scripts": {
     "start": "npm run dev",
     "dev": "cross-env NODE_ENV=development vite",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "build": "npm run typecheck && cross-env NODE_ENV=production vite build && npx workbox generateSW workbox-config.js",
     "generate-app-icons": "npx --package framework7-cli framework7 assets",
     "postinstall": "cpy --flat ./node_modules/framework7-icons/fonts/*.* ./src/fonts/ && cpy --flat ./node_modules/material-icons/iconfont/*.* ./src/fonts/"
@@ -27,7 +33,8 @@
     "material-icons": "^1.13.14",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "swiper": "^14.1.0"
+    "swiper": "^14.1.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",
@@ -39,6 +46,7 @@
     "postcss-preset-env": "^11.3.2",
     "typescript": "^7.0.2",
     "vite": "^8.2.1",
+    "vitest": "^4.1.11",
     "workbox-cli": "^7.4.1"
   }
 }

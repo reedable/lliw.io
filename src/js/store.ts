@@ -1,16 +1,19 @@
 import { createStore } from 'framework7/lite';
+import { z } from 'zod';
 
 import { TERTIARY } from './colors';
 import { createColorId, createGroupId } from './ids';
 import { DEFAULT_GROUP_NAME, SEED_PALETTES } from './seed';
+import { readExportPayload, readPalettePayload } from './migrations';
+import { migrateKey } from './storage';
+import { SCHEMA_VERSION, SettingsSchema } from './types';
 import type {
   ColorGroup,
-  ConformanceSetting,
   Palette,
   PaletteColor,
   PaletteItem,
   Settings,
-  ThemeSetting,
+  StoredPalettes,
 } from './types';
 
 export const flattenPalette = (palette: Palette): PaletteItem[] => [
@@ -53,7 +56,24 @@ interface AppState {
   settings: Settings;
 }
 
-const SETTINGS_KEY = 'palette.settings';
+/*
+ * The `palette.*` names are pre-rename, from when this project was called
+ * palette. See storage.ts — the LEGACY_ constants and the migrateKey calls below
+ * are a temporary shim and are meant to be deleted.
+ */
+const SETTINGS_KEY = 'lliw.settings';
+const PALETTES_KEY = 'lliw.palettes';
+const LEGACY_SETTINGS_KEY = 'palette.settings';
+const LEGACY_PALETTES_KEY = 'palette.palettes';
+
+/*
+ * Runs before the first read below. After it, nothing else in this file knows
+ * the old keys ever existed.
+ */
+if (typeof localStorage !== 'undefined') {
+  migrateKey(localStorage, LEGACY_SETTINGS_KEY, SETTINGS_KEY);
+  migrateKey(localStorage, LEGACY_PALETTES_KEY, PALETTES_KEY);
+}
 
 const DEFAULT_SETTINGS: Settings = {
   defaultConformance: 'AAA',
@@ -62,30 +82,16 @@ const DEFAULT_SETTINGS: Settings = {
 };
 
 /*
- * Reads back field by field rather than trusting the parsed object: whatever is in
- * localStorage was written by a previous version of this app and is not guaranteed
- * to match the current Settings shape. An unknown conformance value would other-
- * wise reach the colour page as a filter with no MIN_RATIO entry.
+ * Anything that is not exactly a Settings object falls back to the defaults
+ * whole. An unrecognised conformance level would otherwise reach the colour page
+ * as a filter with no MIN_RATIO entry.
  */
 const loadSettings = (): Settings => {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
     if (!raw) return DEFAULT_SETTINGS;
-    const parsed = JSON.parse(raw) as Partial<Settings>;
-    return {
-      defaultConformance: (['AAA', 'AA', 'A'] as const).includes(
-        parsed.defaultConformance as ConformanceSetting,
-      )
-        ? (parsed.defaultConformance as ConformanceSetting)
-        : DEFAULT_SETTINGS.defaultConformance,
-      showBaseColors:
-        typeof parsed.showBaseColors === 'boolean'
-          ? parsed.showBaseColors
-          : DEFAULT_SETTINGS.showBaseColors,
-      theme: (['auto', 'ios', 'md'] as const).includes(parsed.theme as ThemeSetting)
-        ? (parsed.theme as ThemeSetting)
-        : DEFAULT_SETTINGS.theme,
-    };
+    const parsed = SettingsSchema.safeParse(JSON.parse(raw));
+    return parsed.success ? parsed.data : DEFAULT_SETTINGS;
   } catch {
     // Unreadable or unparseable storage should not stop the app booting.
     return DEFAULT_SETTINGS;
@@ -100,79 +106,23 @@ const saveSettings = (settings: Settings) => {
   }
 };
 
-const PALETTES_KEY = 'palette.palettes';
 
-const isPaletteColor = (value: unknown): value is PaletteColor => {
-  if (typeof value !== 'object' || value === null) return false;
-  const c = value as Record<string, unknown>;
-  return typeof c.id === 'string' && typeof c.name === 'string' && typeof c.value === 'string';
-};
 
 /*
- * Colours were plain hex strings before names existed. Anything read from storage
- * or an imported file may still be in that shape, so both forms are accepted here
- * and normalised to the current one. Position supplies the generated name, which
- * is why this maps rather than filters first.
- */
-const normalizeColors = (raw: unknown): PaletteColor[] | null => {
-  if (!Array.isArray(raw)) return null;
-  const colors: PaletteColor[] = [];
-  raw.forEach((entry, i) => {
-    if (typeof entry === 'string') {
-      colors.push({ id: createColorId(), name: `Color ${i + 1}`, value: entry });
-    } else if (isPaletteColor(entry)) {
-      colors.push(entry);
-    }
-  });
-  return colors;
-};
-
-/*
- * Accepts all three shapes. v1/v2 stored `colors` on the palette; v3 stores
- * `groups`. An older palette is wrapped in one group so nothing is lost and the
- * user sees the same list under a "Colors" heading.
- */
-const normalizeGroups = (p: Record<string, unknown>): ColorGroup[] | null => {
-  if (Array.isArray(p.groups)) {
-    const groups: ColorGroup[] = [];
-    p.groups.forEach((raw) => {
-      if (typeof raw !== 'object' || raw === null) return;
-      const g = raw as Record<string, unknown>;
-      if (typeof g.id !== 'string' || typeof g.name !== 'string') return;
-      const colors = normalizeColors(g.colors);
-      if (colors === null) return;
-      groups.push({ id: g.id, name: g.name, colors });
-    });
-    return groups;
-  }
-  const colors = normalizeColors(p.colors);
-  if (colors === null) return null;
-  return [{ id: createGroupId(), name: DEFAULT_GROUP_NAME, colors }];
-};
-
-const normalizePalette = (value: unknown): Palette | null => {
-  if (typeof value !== 'object' || value === null) return null;
-  const p = value as Record<string, unknown>;
-  if (typeof p.id !== 'string' || typeof p.name !== 'string') return null;
-  const groups = normalizeGroups(p);
-  if (groups === null) return null;
-  const ungrouped = normalizeColors(p.ungrouped) ?? [];
-  return { id: p.id, name: p.name, ungrouped, groups };
-};
-
-/*
- * Malformed entries are dropped individually rather than discarding the whole set,
- * so one bad record written by an older version does not cost the user every
- * palette they have. An empty stored array is honoured as empty — the seeds are
- * only a first-run value, not a floor.
+ * Written as an envelope so the payload carries its own version. Reading goes
+ * through migrations.readPalettePayload, which accepts the current shape or any
+ * retired one and upgrades it — a bare array written before versioning existed
+ * is still read here, not discarded.
+ *
+ * Anything matching no known version is rejected whole and the seeds stand in.
+ * An empty palettes array is valid and honoured as empty; the seeds are a
+ * first-run value, not a floor.
  */
 const loadPalettes = (): Palette[] => {
   try {
     const raw = localStorage.getItem(PALETTES_KEY);
     if (raw === null) return SEED_PALETTES;
-    const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return SEED_PALETTES;
-    return parsed.map(normalizePalette).filter((p): p is Palette => p !== null);
+    return readPalettePayload(JSON.parse(raw))?.palettes ?? SEED_PALETTES;
   } catch {
     return SEED_PALETTES;
   }
@@ -180,7 +130,8 @@ const loadPalettes = (): Palette[] => {
 
 const savePalettes = (palettes: Palette[]) => {
   try {
-    localStorage.setItem(PALETTES_KEY, JSON.stringify(palettes));
+    const payload: StoredPalettes = { schemaVersion: SCHEMA_VERSION, palettes };
+    localStorage.setItem(PALETTES_KEY, JSON.stringify(payload));
   } catch {
     // Storage can be unavailable or full; the in-memory state is still correct.
   }
@@ -188,25 +139,15 @@ const savePalettes = (palettes: Palette[]) => {
 
 /*
  * Transfer format. `format` lets a stray JSON file be rejected as "not ours"
- * rather than "corrupt". `version` is the part that has to exist from the first
- * exported file onwards: it does not make anything future-proof by itself, but it
- * is what lets a later build recognise an old file and migrate it, instead of
- * silently misreading a changed shape. Bump it whenever the payload changes, and
- * never reuse a number for a different shape.
- *
- * v1: colors were string[] of hex values.
- * v2: colors are { id, name, value }. v1 files still import — normalizeColors
- *     converts them and generates the names.
- * v3: colours live in groups. v1 and v2 files still import — their flat list is
- *     wrapped in one group named "Colors".
+ * rather than "corrupt"; `schemaVersion` inside the payload is what lets an
+ * older file be recognised and upgraded rather than misread.
  */
 const EXPORT_FORMAT = 'lliw.io/palettes';
-const EXPORT_VERSION = 3;
 
 interface PaletteExport {
-  format: string;
-  version: number;
+  format: typeof EXPORT_FORMAT;
   exportedAt: string;
+  schemaVersion: number;
   palettes: Palette[];
 }
 
@@ -214,8 +155,8 @@ type ImportResult = { ok: true; palettes: Palette[] } | { ok: false; reason: str
 
 export const buildExport = (palettes: Palette[]): PaletteExport => ({
   format: EXPORT_FORMAT,
-  version: EXPORT_VERSION,
   exportedAt: new Date().toISOString(),
+  schemaVersion: SCHEMA_VERSION,
   palettes,
 });
 
@@ -226,35 +167,25 @@ export const parseImport = (text: string): ImportResult => {
   } catch {
     return { ok: false, reason: 'That file is not valid JSON.' };
   }
-  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-    return { ok: false, reason: 'That file is not a lliw.io export.' };
-  }
 
-  const payload = parsed as Record<string, unknown>;
-  if (payload.format !== EXPORT_FORMAT) {
+  /*
+   * Two steps only so the two failures read differently to the user: a file that
+   * is not ours at all, versus one that is ours and malformed. The schema is the
+   * authority in both cases.
+   */
+  if (!z.object({ format: z.literal(EXPORT_FORMAT) }).safeParse(parsed).success) {
     return { ok: false, reason: 'That file was not exported from lliw.io.' };
   }
-  if (typeof payload.version !== 'number') {
-    return { ok: false, reason: 'That file has no version and cannot be read safely.' };
+  /*
+   * Same ladder as stored data: an export written before versioning existed is
+   * upgraded, and one carrying a version this build does not know is refused
+   * rather than guessed at.
+   */
+  const payload = readExportPayload(parsed);
+  if (payload === null) {
+    return { ok: false, reason: 'That file is a lliw.io export, but it could not be read.' };
   }
-  // Refuse rather than guess: a newer file may contain fields this build would drop.
-  if (payload.version > EXPORT_VERSION) {
-    return {
-      ok: false,
-      reason: `That file is version ${payload.version}, and this app reads up to ${EXPORT_VERSION}. Update the app first.`,
-    };
-  }
-  if (!Array.isArray(payload.palettes)) {
-    return { ok: false, reason: 'That file contains no palettes.' };
-  }
-
-  const palettes = payload.palettes
-    .map(normalizePalette)
-    .filter((p): p is Palette => p !== null);
-  if (palettes.length === 0) {
-    return { ok: false, reason: 'No readable palettes in that file.' };
-  }
-  return { ok: true, palettes };
+  return { ok: true, palettes: payload.palettes };
 };
 
 interface StoreCtx {

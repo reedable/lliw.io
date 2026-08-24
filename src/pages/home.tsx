@@ -260,6 +260,10 @@ const PaletteCard = ({
   /* The flat sequence the store folds to and from, so a drag index matches. */
   const items: PaletteItem[] = flattenPalette(palette);
 
+  /* The same colours without the group headers — the swatch strip and the empty
+     check both want this, and neither cares which group a colour is in. */
+  const colors = allColors(palette);
+
   /*
    * Fixed in both lifted phases, so the endpoints differ only in their values.
    * margin:0 because the measured rect is a border box — the row's margins are
@@ -306,7 +310,7 @@ const PaletteCard = ({
         <div className="palette-body">
           <div ref={heroRef} className="palette-hero">
             <div className="palette-swatches">
-              {allColors(palette).map((color) => (
+              {colors.map((color) => (
                 <div key={color.id} style={{ backgroundColor: color.value }} />
               ))}
             </div>
@@ -409,7 +413,7 @@ const PaletteCard = ({
             )}
           </List>
 
-          {allColors(palette).length === 0 && (
+          {colors.length === 0 && (
             <Block className="palette-empty">No colors yet.</Block>
           )}
 

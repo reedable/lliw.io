@@ -15,8 +15,8 @@ is still unknown — so a decision is not re-derived from scratch later.
 
 ## Hardening
 
-- [Automated tests](backlog/automated-tests.md) — no runner; the pure functions
-  in `store.ts` are uncovered.
+- [Automated tests](backlog/automated-tests.md) — runner in place; the palette
+  folds in `store.ts` are still uncovered and not reachable from a test.
 - [Error boundary](backlog/error-boundary.md) — a throw in any page blanks the
   app.
 - [npm audit: workbox-cli chain](backlog/npm-audit-workbox-cli.md) — the only

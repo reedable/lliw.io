@@ -1,32 +1,58 @@
-# Automated tests
+# Automated tests: the gaps that remain
 
-There is no test runner in `devDependencies` and no test files. `tsc --noEmit`
-gates `build`, so type-level regressions are caught; behavioural ones are not.
+Vitest 4.1.11 is installed and runs under `typescript@7.0.2` — it strips types
+via esbuild rather than calling the TypeScript compiler API, which is why it does
+not hit the wall that blocks typescript-eslint (see [linting](linting.md)).
+`npm test` and `npm run test:watch`.
 
-## Highest-value surface, because it is pure
+Covered today: `src/js/migrations.ts` and `src/js/contrast.ts`.
 
-- `src/js/store.ts` — `flattenPalette` / `rebuildPalette`. The round trip that
-  drag-and-drop reordering depends on: the card renders one flat list of headers
-  and colours as siblings, and a drop is interpreted by folding that sequence
-  back into groups. A colour dragged past a header changes group; a dragged
-  header repositions alone and leaves its colours to whatever now precedes them.
-  Both behaviours are load-bearing and currently unverified.
-- `src/js/store.ts` — `moveItem`. Applies the move to the flat sequence and
-  folds back; bounds-checks `from`/`to` against the flattened length.
-- `src/js/store.ts` — `normalizeColors` / `normalizeGroups` / `normalizePalette`.
-  Accept three historical shapes (v1 `string[]` of hex, v2 `{id,name,value}`,
-  v3 grouped) and drop malformed entries individually rather than discarding a
-  whole palette.
-- `src/js/store.ts` — `parseImport`. Rejects non-JSON, wrong `format`, missing
-  `version`, and versions newer than `EXPORT_VERSION`.
-- `src/js/seed.ts` — `namedGroup` derives colour names from object keys in
-  `colors.ts`.
+`build` still gates on `typecheck` only, not on tests. Whether it should is
+undecided.
 
-None of these touch the DOM, Framework7, or localStorage, so they need no
-environment beyond a runner.
+## What is still uncovered
 
-## Not decided
+All three are pure and are the correctness-critical parts of the app that no
+test touches.
 
-Which runner. Vitest is the obvious fit for a Vite project but has not been
-checked against `typescript@7.0.2` — that is the same class of question that
-blocked typescript-eslint, so verify before committing to it.
+- **`flattenPalette` / `rebuildPalette` round trip** (`src/js/store.ts`). The
+  highest-value gap. The card renders one flat list with headers and colours as
+  siblings, and a drop is interpreted by folding that sequence back into groups.
+  A colour dragged past a header changes group; a dragged header repositions
+  alone and leaves its colours to whatever now precedes them. Both behaviours
+  are load-bearing, both are easy to break, and neither is verified.
+- **`moveItem`** (`src/js/store.ts`). Applies the move to the flat sequence and
+  folds back, bounds-checking `from`/`to` against the flattened length.
+- **`namedGroup`** (`src/js/seed.ts`). Derives colour names from the object keys
+  in `colors.ts`, so the brand palette's names and values have a single source.
+
+## The obstacle: they are not reachable from a test
+
+This is the actual work, not the test-writing.
+
+`src/js/store.ts` imports `framework7/lite` and calls `loadPalettes()` and
+`loadSettings()` at module load, which touch `localStorage`. Importing it from a
+node test environment is therefore not free. `namedGroup` is not exported from
+`seed.ts`.
+
+Two ways out:
+
+1. **Extract the pure folds out of `store.ts`.** `migrations.ts` and
+   `contrast.ts` are both testable precisely because they are pure modules with
+   no Framework7 or storage dependency. `flattenPalette`, `rebuildPalette` and
+   the move arithmetic could sit in the same shape — the store would import them
+   and stay responsible for state and persistence only. This also shrinks
+   `store.ts`, which is doing several jobs.
+2. **Run under jsdom.** Adds a dependency and an environment, and leaves
+   `store.ts` importing Framework7 in tests for no benefit. Cheaper to set up,
+   worse to live with.
+
+Option 1 is the same move that made the two currently-tested modules testable,
+and it is a prerequisite for the [PaletteCard](palette-card-complexity.md) work
+regardless.
+
+## Related
+
+The `ungrouped`/`groups` question in [store shape](store-shape-ungrouped.md)
+cannot be safely changed without the round-trip tests above — `rebuildPalette`
+is exactly what a change there would alter.

@@ -8,6 +8,11 @@ is still unknown — so a decision is not re-derived from scratch later.
 - [Linting and formatting](backlog/linting.md) — ESLint + typescript-eslint
   cannot run on TypeScript 7.
 
+## Accessibility
+
+- [Reduced motion](backlog/reduced-motion.md) — `prefers-reduced-motion` is not
+  honoured anywhere; the card expand is a full-viewport geometry change.
+
 ## Hardening
 
 - [Automated tests](backlog/automated-tests.md) — no runner; the pure functions

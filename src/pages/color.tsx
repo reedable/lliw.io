@@ -19,11 +19,15 @@ import {
 import type { Router } from 'framework7/types';
 import store, { allColors, findColor } from '../js/store';
 import type { Palette, Settings } from '../js/types';
-import { contrastRatio } from '../js/contrast';
+import { canonical, contrastRatio, flatten } from '../js/contrast';
 import { useSwipeDown } from '../js/useSwipeDown';
 
-/** #rgb or #rrggbb. Anything else is treated as still being typed. */
-const HEX = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
+/**
+ * #rgb, #rgba, #rrggbb or #rrggbbaa. Anything else is treated as still being
+ * typed. The 4- and 8-digit forms carry alpha; colorjs.io parses both, and CSS
+ * renders both, so an alpha value needs no separate representation.
+ */
+const HEX = /^#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
 
 interface ColorPageProps {
   f7route: Router.Route;
@@ -86,7 +90,10 @@ interface ComboProps {
 }
 
 const Combo = ({ background, foreground, label, hex }: ComboProps) => (
-  <div className="color-combo" style={{ backgroundColor: background, color: foreground }}>
+  <div
+    className="color-combo"
+    style={{ '--tile-color': background, color: foreground } as React.CSSProperties}
+  >
     <span className="color-combo-large">Aa</span>
     <span className="color-combo-small">Small text sample</span>
     <span className="color-combo-label">
@@ -170,11 +177,11 @@ const ColorPage = ({ f7route, f7router }: ColorPageProps) => {
 
   /*
    * Counterparts to pair this colour with: the rest of the palette, plus black and
-   * white when the setting allows. Compared lowercased so a palette that already
-   * contains #FFFFFF does not produce a duplicate tile, and the colour itself is
-   * dropped — pairing it with itself renders an unreadable solid block.
+   * white when the setting allows. Deduped by canonical form so a palette that
+   * already contains #FFFFFF does not produce a duplicate tile, and the colour
+   * itself is dropped — pairing it with itself renders an unreadable solid block.
    */
-  const self = color.value.toLowerCase();
+  const self = canonical(color.value);
   const seen = new Set<string>([self]);
   const counterparts: Counterpart[] = [];
 
@@ -182,26 +189,36 @@ const ColorPage = ({ f7route, f7router }: ColorPageProps) => {
   const flat = allColors(palette);
 
   flat.forEach((c) => {
-    const value = c.value.toLowerCase();
-    if (seen.has(value)) return;
-    seen.add(value);
-    counterparts.push({ value, name: c.name });
+    const key = canonical(c.value);
+    if (seen.has(key)) return;
+    seen.add(key);
+    counterparts.push({ value: c.value, name: c.name });
   });
   if (settings.showBaseColors) {
     BASE_COLORS.forEach((value) => {
-      if (seen.has(value)) return;
-      seen.add(value);
+      const key = canonical(value);
+      if (seen.has(key)) return;
+      seen.add(key);
       counterparts.push({ value });
     });
   }
 
   /*
-   * One ratio per counterpart, not per tile: the WCAG 2.x ratio is symmetric —
-   * colorjs.io's own WCAG21 source notes it "does not matter which is foreground
-   * and which is background" — so both sections below filter identically.
+   * Filtered per direction, not once per counterpart.
+   *
+   * This used to be a single ratio reused by both grids, on the grounds that the
+   * WCAG 2.x ratio is symmetric. That holds only while both colours are opaque.
+   * Once either carries alpha the two directions are different composites — the
+   * colour laid over the counterpart, versus the counterpart laid over it — and
+   * they produce different numbers. So the two grids can legitimately show
+   * different counterparts, and that is correct rather than a bug.
    */
-  const visible = counterparts.filter(
-    (c) => (contrastRatio(color.value, c.value) ?? 0) >= MIN_RATIO[filter],
+  const bar = MIN_RATIO[filter];
+  const visibleAsForeground = counterparts.filter(
+    (c) => (contrastRatio(color.value, c.value) ?? 0) >= bar,
+  );
+  const visibleAsBackground = counterparts.filter(
+    (c) => (contrastRatio(c.value, color.value) ?? 0) >= bar,
   );
 
   return (
@@ -245,8 +262,13 @@ const ColorPage = ({ f7route, f7router }: ColorPageProps) => {
       */}
       <Swiper
         className="color-hero"
-        /* Only the value; the contrasting colour is derived in CSS from this. */
-        style={{ '--hero-color': color.value } as React.CSSProperties}
+        /*
+         * The contrasting colour for the pagination bullets is derived in CSS
+         * from this, so it has to be what is actually visible: a translucent
+         * colour is flattened onto the base first. Handing contrast-color() the
+         * raw value would have it pick a contrast against a colour nobody sees.
+         */
+        style={{ '--hero-color': flatten(color.value) } as React.CSSProperties}
         modules={[Pagination]}
         /*
          * dynamicBullets keeps only a few bullets on screen and slides the window
@@ -269,7 +291,7 @@ const ColorPage = ({ f7route, f7router }: ColorPageProps) => {
         }}
       >
         {flat.map((c) => (
-          <SwiperSlide key={c.id} style={{ backgroundColor: c.value }} />
+          <SwiperSlide key={c.id} style={{ '--tile-color': c.value } as React.CSSProperties} />
         ))}
       </Swiper>
 
@@ -308,42 +330,54 @@ const ColorPage = ({ f7route, f7router }: ColorPageProps) => {
         />
       </List>
 
-      {visible.length === 0 ? (
+      {visibleAsForeground.length === 0 && visibleAsBackground.length === 0 ? (
         <Block strong inset className="color-empty">
           No pairing in this palette reaches {filter} ({MIN_RATIO[filter]}:1) against{' '}
           {color.value}.
         </Block>
       ) : (
         <>
-          <BlockTitle>{color.name} as foreground</BlockTitle>
-          <Block>
-            <div className="color-combo-grid">
-              {visible.map((c) => (
-                <Combo
-                  key={`fg-${c.value}`}
-                  background={c.value}
-                  foreground={color.value}
-                  label={c.name}
-                  hex={c.value}
-                />
-              ))}
-            </div>
-          </Block>
+          {/*
+            The two sections are filtered independently, so one can be empty
+            while the other is not — see the comment on the filters above.
+          */}
+          {visibleAsForeground.length > 0 && (
+            <>
+              <BlockTitle>{color.name} as foreground</BlockTitle>
+              <Block>
+                <div className="color-combo-grid">
+                  {visibleAsForeground.map((c) => (
+                    <Combo
+                      key={`fg-${c.value}`}
+                      background={c.value}
+                      foreground={color.value}
+                      label={c.name}
+                      hex={c.value}
+                    />
+                  ))}
+                </div>
+              </Block>
+            </>
+          )}
 
-          <BlockTitle>{color.name} as background</BlockTitle>
-          <Block>
-            <div className="color-combo-grid">
-              {visible.map((c) => (
-                <Combo
-                  key={`bg-${c.value}`}
-                  background={color.value}
-                  foreground={c.value}
-                  label={c.name}
-                  hex={c.value}
-                />
-              ))}
-            </div>
-          </Block>
+          {visibleAsBackground.length > 0 && (
+            <>
+              <BlockTitle>{color.name} as background</BlockTitle>
+              <Block>
+                <div className="color-combo-grid">
+                  {visibleAsBackground.map((c) => (
+                    <Combo
+                      key={`bg-${c.value}`}
+                      background={color.value}
+                      foreground={c.value}
+                      label={c.name}
+                      hex={c.value}
+                    />
+                  ))}
+                </div>
+              </Block>
+            </>
+          )}
         </>
       )}
     </Page>

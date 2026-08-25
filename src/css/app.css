@@ -522,21 +522,42 @@ html.pcard-open .views > .tabbar {
 
   /*
    * Swiper's active bullet defaults to var(--swiper-theme-color) — blue, which
-   * reads as a UI accent on a page whose whole subject is colour.
-   */
-  /*
+   * reads as a UI accent on a page whose whole subject is colour. Its inactive
+   * bullets default to #000 at 0.2 opacity, which disappears entirely on a dark
+   * hero: against #012169 or #000000 that is black on near-black.
+   *
+   * Both bullet states therefore take the contrast colour, and only opacity
+   * separates them.
+   *
    * Fallback. contrast-color() cannot be transpiled here: --hero-color is set at
    * runtime from the active slide, and PostCSS resolves at build time — the probe
    * showed contrast-color(#2b2d42) compiling to #fff while
    * contrast-color(var(--hero-color)) passed through untouched. So browsers
-   * without native support keep this value.
+   * without native support keep these values.
    */
   --swiper-pagination-color: #fff;
+  --swiper-pagination-bullet-inactive-color: #fff;
+
+  /*
+   * 0.7 is a floor, not a preference. A bullet at opacity a composites onto the
+   * hero, so its contrast against that hero falls with a — and mid-luminance
+   * heroes have the least contrast to spend. Measured against the seeded
+   * palette, the worst case is TERTIARY.gray (#757575): 4.61 at full opacity,
+   * 3.16 at 0.7, 2.20 at 0.45. WCAG 1.4.11 asks 3:1 for non-text UI, so 0.7 is
+   * the lowest value that still clears it everywhere here.
+   *
+   * A user palette holding a mid grey slightly lighter than #757575 can still
+   * fall under. Raising this to 1 removes that risk entirely and costs nothing
+   * structural: dynamicBullets already separates active from inactive by size
+   * (scale 1 / 0.66 / 0.33), so opacity is not carrying that distinction.
+   */
+  --swiper-pagination-bullet-inactive-opacity: 0.7;
 }
 
 @supports (color: contrast-color(red)) {
   .color-hero {
     --swiper-pagination-color: contrast-color(var(--hero-color));
+    --swiper-pagination-bullet-inactive-color: contrast-color(var(--hero-color));
   }
 }
 
@@ -548,6 +569,24 @@ html.pcard-open .views > .tabbar {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 8px;
+}
+
+/*
+ * The inline background-color on these is a palette colour, which may carry
+ * alpha. contrast.ts composites a translucent colour onto white before
+ * measuring it, so the rendered tile has to sit on white too — otherwise the
+ * number and the picture disagree, and the number is the whole product.
+ *
+ * Painted as a second background layer beneath the inline colour rather than on
+ * a wrapper, so an opaque colour renders exactly as it did before. Keep the
+ * value in step with BASE in contrast.ts.
+ */
+.color-combo,
+.palette-chip,
+.palette-swatches > div,
+.color-hero .swiper-slide {
+  background-color: #fff;
+  background-image: linear-gradient(var(--tile-color, transparent), var(--tile-color, transparent));
 }
 
 .color-combo {

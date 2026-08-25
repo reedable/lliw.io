@@ -311,7 +311,10 @@ const PaletteCard = ({
           <div ref={heroRef} className="palette-hero">
             <div className="palette-swatches">
               {colors.map((color) => (
-                <div key={color.id} style={{ backgroundColor: color.value }} />
+                <div
+                  key={color.id}
+                  style={{ '--tile-color': color.value } as React.CSSProperties}
+                />
               ))}
             </div>
             {/*
@@ -386,7 +389,7 @@ const PaletteCard = ({
                   <div
                     slot="media"
                     className="palette-chip"
-                    style={{ backgroundColor: item.color.value }}
+                    style={{ '--tile-color': item.color.value } as React.CSSProperties}
                   />
                   {/*
                     `close`, not `delete`. F7's delete removes the <li> from the DOM

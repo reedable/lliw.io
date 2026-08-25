@@ -27,6 +27,11 @@ is still unknown — so a decision is not re-derived from scratch later.
 - [Store shape: ungrouped vs groups](backlog/store-shape-ungrouped.md)
 - [PaletteCard complexity](backlog/palette-card-complexity.md)
 
+## On hold
+
+- [Color picker](backlog/color-picker.md) — nothing built; records the
+  Framework7 research so it need not be redone.
+
 ## Cleanup
 
 - [Content Security Policy](backlog/content-security-policy.md)

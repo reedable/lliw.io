@@ -5,14 +5,15 @@ unconditionally, on every device, regardless of the OS accessibility setting.
 
 ## What currently animates
 
-CSS, all in `src/css/app.css`:
+CSS, in `src/css/global.css`, `src/pages/HomePage.module.css`, and
+`src/pages/PaletteCard.module.css`:
 
-- `.pcard.is-lifted` — `top`, `left`, `width`, `height`, `border-radius`, 300ms.
+- `.pcard.isLifted` — `top`, `left`, `width`, `height`, `border-radius`, 300ms.
   The card expand/collapse. The largest movement in the app: a row grows to fill
   the viewport.
-- `.palette-hero` — `height`, 300ms, in step with the card.
-- `.palette-swatches` — `transform`, 100ms, the swatch strip uncropping.
-- `.control-back` / `.control-edit` / `.control-add` — `transform`, 300ms, the
+- `.paletteHero` — `height`, 300ms, in step with the card.
+- `.paletteSwatches` — `transform`, 100ms, the swatch strip uncropping.
+- `.controlBack` / `.controlEdit` / `.controlAdd` — `transform`, 300ms, the
   controls sliding in and out of the top of the viewport.
 - `html.pcard-open .views > .tabbar` — `transform`, 300ms, the tab bar sliding
   away.
@@ -46,7 +47,7 @@ the default and the setting exists to override a guess. Reduced motion has a
 stronger claim to that treatment, since the OS setting is global and a user may
 want it in some apps and not others.
 
-If it becomes a setting it joins `Settings` in `src/js/types.ts`, which is
+If it becomes a setting it joins `Settings` in `src/utils/types.ts`, which is
 unversioned — losing it is a reset, not a loss, so no schema work is implied.
 
 ## Related

@@ -1,0 +1,29 @@
+:root {
+  --palette-card-height: 200px;
+  --palette-hero-height: 300px;
+  --palette-name-size: 16px;
+  --palette-name-padding: 10px 16px;
+  --palette-fab-gap: 16px;
+  --lliw-tabbar-gap: 16px;
+  --lliw-title-gap: 12px;
+  --lliw-card-inset: 20px;
+  --lliw-card-gap: 20px;
+}
+
+.navbar-large-hidden.navbar-large {
+  --f7-navbar-large-collapse-progress: 1;
+}
+
+.toolbar-bottom .toolbar-inner {
+  top: calc(var(--f7-safe-area-bottom) - var(--lliw-tabbar-gap));
+  bottom: var(--lliw-tabbar-gap);
+}
+
+.toolbar-bottom.toolbar-hidden,
+html.pcard-open .views > .tabbar {
+  transform: translate3d(0, calc(100% + 32px), 0);
+}
+
+html.pcard-open .views > .tabbar {
+  transition: transform 300ms;
+}

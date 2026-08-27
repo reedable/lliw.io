@@ -2,7 +2,7 @@ import { createStore } from 'framework7/lite';
 import { z } from 'zod';
 
 import { TERTIARY } from './colors';
-import { createColorId, createGroupId } from './ids';
+import { createColorId, createGroupId } from '../utils/ids';
 import { DEFAULT_GROUP_NAME, SEED_PALETTES } from './seed';
 import { readExportPayload, readPalettePayload } from './migrations';
 import { SCHEMA_VERSION, SettingsSchema } from './types';

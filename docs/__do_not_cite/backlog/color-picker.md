@@ -14,7 +14,7 @@ real picker". That comment is the origin of this item.
 ## What was established, 2026-08-25
 
 **Framework7 ships one, and it is already loaded.** `ColorPicker` is present in
-`framework7/lite-bundle`, which `src/js/app.tsx` already imports. Adding it costs
+`framework7/lite-bundle`, which `src/main.tsx` already imports. Adding it costs
 no bundle size.
 
 **There is no React wrapper.** `framework7-react` has no ColorPicker component —
@@ -45,7 +45,7 @@ current `#rrggbbaa` storage format are directly available.
 ## Open questions if it is picked up
 
 - Whether the picker style is a user setting. `SettingsSchema` in
-  `src/js/types.ts` is unversioned by deliberate decision, so adding a
+  `src/utils/types.ts` is unversioned by deliberate decision, so adding a
   `pickerModules` field needs no schema work.
 - Gesture conflict. The colour page already hosts a horizontal Swiper and a
   vertical swipe-down that calls `preventDefault` on downward drags. A picker
@@ -57,6 +57,6 @@ current `#rrggbbaa` storage format are directly available.
 ## Not a blocker any more
 
 Alpha was originally scoped as part of this work. It shipped separately and is
-done: storage takes `#rrggbbaa`, `src/js/contrast.ts` composites before
+done: storage takes `#rrggbbaa`, `src/utils/contrast.ts` composites before
 measuring, and every rendering surface paints over an opaque base. A picker
 would only need to enable the `alpha-slider` module.

@@ -1,0 +1,31 @@
+.colorHero {
+  height: 220px;
+  --swiper-pagination-color: #fff;
+  --swiper-pagination-bullet-inactive-color: #fff;
+  --swiper-pagination-bullet-inactive-opacity: .7;
+}
+
+@supports (color: contrast-color(red)) {
+  .colorHero {
+    --swiper-pagination-color: contrast-color(var(--hero-color));
+    --swiper-pagination-bullet-inactive-color: contrast-color(var(--hero-color));
+  }
+}
+
+.colorEmpty { opacity: .6; }
+.comboGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.combo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 12px;
+  box-shadow: inset 0 0 0 .5px rgba(128, 128, 128, .4);
+  background-color: #fff;
+  background-image: linear-gradient(var(--tile-color, transparent), var(--tile-color, transparent));
+}
+.comboLarge { font-size: 24px; font-weight: 600; line-height: 1; }
+.comboSmall { font-size: 14px; line-height: 1.2; }
+.comboLabel { font-size: 12px; opacity: .6; }
+.comboLabel > b { margin-right: .4em; }
+.colorHero :global(.swiper-slide) { background-color: #fff; background-image: linear-gradient(var(--tile-color, transparent), var(--tile-color, transparent)); }

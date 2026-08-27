@@ -14,8 +14,8 @@ import Color from 'colorjs.io';
  * translucent colour actually composites over on screen.
  *
  * This has to stay in step with the opaque base painted under every surface
- * that renders a colour (see .color-combo, .palette-chip and the hero slides in
- * app.css). If the two ever disagree, the number and the picture disagree.
+ * that renders a colour (the combo, chip, and hero-slide rules in the page CSS
+ * modules). If the two ever disagree, the number and the picture disagree.
  */
 const BASE = '#ffffff';
 

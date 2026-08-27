@@ -1,6 +1,6 @@
 # Store shape: `ungrouped` alongside `groups`
 
-`Palette` (`src/js/types.ts`) has two colour buckets:
+`Palette` (`src/utils/types.ts`) has two colour buckets:
 
 ```ts
 interface Palette {
@@ -13,7 +13,7 @@ interface Palette {
 
 ## What it costs
 
-Two write helpers exist solely because of the split (`src/js/store.ts`):
+Two write helpers exist solely because of the split (`src/utils/store.ts`):
 
 - `updateGroups` — group-scoped writes (`addGroup`, `renameGroup`,
   `removeGroup`, `addColor`).

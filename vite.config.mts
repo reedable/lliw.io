@@ -1,10 +1,12 @@
 import path from 'path';
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-const SRC_DIR = path.resolve(__dirname, './src');
-const PUBLIC_DIR = path.resolve(__dirname, './public');
-const BUILD_DIR = path.resolve(__dirname, './www');
+const CONFIG_DIR = path.dirname(fileURLToPath(import.meta.url));
+const SRC_DIR = path.resolve(CONFIG_DIR, './src');
+const PUBLIC_DIR = path.resolve(CONFIG_DIR, './public');
+const BUILD_DIR = path.resolve(CONFIG_DIR, './www');
 
 export default defineConfig({
   plugins: [react()],

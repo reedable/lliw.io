@@ -11,8 +11,8 @@ import {
   f7,
   useStore,
 } from 'framework7-react';
-import store, { buildExport, parseImport } from '../js/store';
-import type { ConformanceSetting, Palette, Settings, ThemeSetting } from '../js/types';
+import store, { buildExport, parseImport } from '../domain/store';
+import type { ConformanceSetting, Palette, Settings, ThemeSetting } from '../domain/types';
 
 const CONFORMANCE_OPTIONS: ConformanceSetting[] = ['AAA', 'AA', 'A'];
 

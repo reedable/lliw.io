@@ -15,7 +15,7 @@ is what makes `skipWaiting` / `clientsClaim` safe (see `workbox-config.js`).
 
 - `vite.config.ts`: `rollupOptions.treeshake: false` — no dead-code elimination.
 - `vite.config.ts`: `assetsInlineLimit: 0` — nothing is inlined as a data URI.
-- `src/js/app.tsx`: `import 'framework7/css/bundle'` — the whole Framework7
+- `src/main.tsx`: `import 'framework7/css/bundle'` — the whole Framework7
   stylesheet, both themes, every component.
 
 ## Unknown

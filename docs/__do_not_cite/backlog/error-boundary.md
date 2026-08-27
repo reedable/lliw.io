@@ -1,6 +1,6 @@
 # No React error boundary
 
-Nothing in the tree catches a render error. `src/js/app.tsx` mounts `App`
+Nothing in the tree catches a render error. `src/main.tsx` mounts `App`
 directly:
 
 ```tsx

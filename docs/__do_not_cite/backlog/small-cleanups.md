@@ -7,7 +7,7 @@
 
 The browser uses the meta tag, the installed PWA uses the manifest, so the two
 contexts render different chrome. `#c8102e` is brand red (`BRAND.red` in
-`src/js/colors.ts`), so the manifest is on-brand and the meta tag is not.
+`src/utils/colors.ts`), so the manifest is on-brand and the meta tag is not.
 
 ## floating comment in color.tsx
 

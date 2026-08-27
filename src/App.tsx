@@ -1,12 +1,20 @@
-import { f7ready, App, Views, View, Toolbar, ToolbarPane, Link } from 'framework7-react';
+import {
+  f7ready,
+  App as Framework7,
+  Link,
+  Toolbar,
+  ToolbarPane,
+  View,
+  Views,
+} from "framework7-react";
 
-import routes from '../js/routes';
-import store from '../js/store';
+import store from "./domain/store";
+import routes from "./routes";
 
-const MyApp = () => {
+const App = () => {
   // Framework7 Parameters
   const f7params = {
-    name: 'lliw.io', // App name
+    name: "lliw.io", // App name
     /*
      * Read once, at construction. F7 computes app.theme in its constructor and
      * stamps it on <html> with `removeClass('ios md').addClass(app.theme)` — it
@@ -20,17 +28,18 @@ const MyApp = () => {
 
     // App store
     store: store,
+
     // App routes
     routes: routes,
 
     // Register service worker (only on production build)
     serviceWorker:
-      process.env.NODE_ENV === 'production'
+      process.env.NODE_ENV === "production"
         ? {
             // Must match the Pages subpath: this path also determines the service
             // worker's scope, and a worker at the domain root could not control
             // pages under /lliw.io/.
-            path: '/lliw.io/service-worker.js',
+            path: "/lliw.io/service-worker.js",
           }
         : {},
   };
@@ -40,7 +49,7 @@ const MyApp = () => {
   });
 
   return (
-    <App {...f7params}>
+    <Framework7 {...f7params}>
       {/* Views/Tabs container */}
       <Views tabs className="safe-areas">
         {/* Tabbar for switching views-tabs */}
@@ -68,8 +77,8 @@ const MyApp = () => {
         {/* Settings View */}
         <View id="view-settings" name="settings" tab url="/settings/" />
       </Views>
-    </App>
+    </Framework7>
   );
 };
 
-export default MyApp;
+export default App;

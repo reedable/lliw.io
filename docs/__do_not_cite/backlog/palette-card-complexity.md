@@ -18,7 +18,7 @@ no tests.
 
 **`LIFT_MS` is duplicated across JS and CSS.** `const LIFT_MS = 300` in
 `home.tsx`; `300ms` appears five times in `.pcard.is-lifted`'s transition and
-again in `html.pcard-open .views > .tabbar` (`src/css/app.css`). The comments on
+again in `html.pcard-open .views > .tabbar` (`src/css/global.css`). The comments on
 both sides note the coupling; nothing enforces it. A CSS custom property read
 back via `getComputedStyle`, or a shared constant injected into CSS, would make
 one of them derive from the other.

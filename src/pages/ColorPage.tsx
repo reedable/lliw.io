@@ -17,10 +17,11 @@ import {
   useStore,
 } from 'framework7-react';
 import type { Router } from 'framework7/types';
-import store, { allColors, findColor } from '../js/store';
-import type { Palette, Settings } from '../js/types';
-import { canonical, contrastRatio, flatten } from '../js/contrast';
-import { useSwipeDown } from '../js/useSwipeDown';
+import store, { allColors, findColor } from '../domain/store';
+import type { Palette, Settings } from '../domain/types';
+import { canonical, contrastRatio, flatten } from '../utils/contrast';
+import { useSwipeDown } from '../hooks/useSwipeDown';
+import styles from './ColorPage.module.css';
 
 /**
  * #rgb, #rgba, #rrggbb or #rrggbbaa. Anything else is treated as still being
@@ -91,12 +92,12 @@ interface ComboProps {
 
 const Combo = ({ background, foreground, label, hex }: ComboProps) => (
   <div
-    className="color-combo"
+    className={styles.combo}
     style={{ '--tile-color': background, color: foreground } as React.CSSProperties}
   >
-    <span className="color-combo-large">Aa</span>
-    <span className="color-combo-small">Small text sample</span>
-    <span className="color-combo-label">
+    <span className={styles.comboLarge}>Aa</span>
+    <span className={styles.comboSmall}>Small text sample</span>
+    <span className={styles.comboLabel}>
       {label && <b>{label}</b>}
       {hex}
     </span>
@@ -261,7 +262,7 @@ const ColorPage = ({ f7route, f7router }: ColorPageProps) => {
         activeIndex because loop mode inserts duplicate slides at both ends.
       */}
       <Swiper
-        className="color-hero"
+        className={styles.colorHero}
         /*
          * The contrasting colour for the pagination bullets is derived in CSS
          * from this, so it has to be what is actually visible: a translucent
@@ -331,7 +332,7 @@ const ColorPage = ({ f7route, f7router }: ColorPageProps) => {
       </List>
 
       {visibleAsForeground.length === 0 && visibleAsBackground.length === 0 ? (
-        <Block strong inset className="color-empty">
+        <Block strong inset className={styles.colorEmpty}>
           No pairing in this palette reaches {filter} ({MIN_RATIO[filter]}:1) against{' '}
           {color.value}.
         </Block>
@@ -345,7 +346,7 @@ const ColorPage = ({ f7route, f7router }: ColorPageProps) => {
             <>
               <BlockTitle>{color.name} as foreground</BlockTitle>
               <Block>
-                <div className="color-combo-grid">
+                <div className={styles.comboGrid}>
                   {visibleAsForeground.map((c) => (
                     <Combo
                       key={`fg-${c.value}`}
@@ -364,7 +365,7 @@ const ColorPage = ({ f7route, f7router }: ColorPageProps) => {
             <>
               <BlockTitle>{color.name} as background</BlockTitle>
               <Block>
-                <div className="color-combo-grid">
+                <div className={styles.comboGrid}>
                   {visibleAsBackground.map((c) => (
                     <Combo
                       key={`bg-${c.value}`}

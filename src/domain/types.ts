@@ -27,7 +27,7 @@ import * as current from './schema/v1';
  *
  * So a destructive change ships as a new schema file plus one upgrade step:
  *
- *   1. cp src/js/schema/v1.ts src/js/schema/v2.ts, and edit v2.ts.
+ *   1. cp src/domain/schema/v1.ts src/domain/schema/v2.ts, and edit v2.ts.
  *   2. Point the `current` import above at v2.
  *   3. Add the v1 -> v2 upgrade and append the entry in migrations.ts.
  *

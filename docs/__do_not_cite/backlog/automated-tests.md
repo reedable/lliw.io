@@ -5,7 +5,7 @@ via esbuild rather than calling the TypeScript compiler API, which is why it doe
 not hit the wall that blocks typescript-eslint (see [linting](linting.md)).
 `npm test` and `npm run test:watch`.
 
-Covered today: `src/js/migrations.ts` and `src/js/contrast.ts`.
+Covered today: `src/utils/migrations.ts` and `src/utils/contrast.ts`.
 
 `build` still gates on `typecheck` only, not on tests. Whether it should is
 undecided.
@@ -15,22 +15,22 @@ undecided.
 All three are pure and are the correctness-critical parts of the app that no
 test touches.
 
-- **`flattenPalette` / `rebuildPalette` round trip** (`src/js/store.ts`). The
+- **`flattenPalette` / `rebuildPalette` round trip** (`src/utils/store.ts`). The
   highest-value gap. The card renders one flat list with headers and colours as
   siblings, and a drop is interpreted by folding that sequence back into groups.
   A colour dragged past a header changes group; a dragged header repositions
   alone and leaves its colours to whatever now precedes them. Both behaviours
   are load-bearing, both are easy to break, and neither is verified.
-- **`moveItem`** (`src/js/store.ts`). Applies the move to the flat sequence and
+- **`moveItem`** (`src/utils/store.ts`). Applies the move to the flat sequence and
   folds back, bounds-checking `from`/`to` against the flattened length.
-- **`namedGroup`** (`src/js/seed.ts`). Derives colour names from the object keys
+- **`namedGroup`** (`src/utils/seed.ts`). Derives colour names from the object keys
   in `colors.ts`, so the brand palette's names and values have a single source.
 
 ## The obstacle: they are not reachable from a test
 
 This is the actual work, not the test-writing.
 
-`src/js/store.ts` imports `framework7/lite` and calls `loadPalettes()` and
+`src/utils/store.ts` imports `framework7/lite` and calls `loadPalettes()` and
 `loadSettings()` at module load, which touch `localStorage`. Importing it from a
 node test environment is therefore not free. `namedGroup` is not exported from
 `seed.ts`.

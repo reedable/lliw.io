@@ -10,7 +10,7 @@ import { z } from 'zod';
  * there was no schema file at the time it was current.
  *
  * Symbol names are as they were. Callers that straddle versions rename on
- * import — `import { PaletteSchema as PaletteSchemaV0 } from './schema/v0'` —
+ * import — `import { PaletteSchema as PaletteSchemaV0 } from '../domain/schema/v0'` —
  * so nothing in here has to be touched to disambiguate it.
  */
 

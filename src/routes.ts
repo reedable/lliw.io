@@ -1,10 +1,10 @@
 
 import type { Router } from 'framework7/types';
 
-import HomePage from '../pages/home';
-import ColorPage from '../pages/color';
-import SettingsPage from '../pages/settings';
-import NotFoundPage from '../pages/404';
+import HomePage from './pages/HomePage';
+import ColorPage from './pages/ColorPage';
+import SettingsPage from './pages/SettingsPage';
+import NotFoundPage from './pages/NotFoundPage';
 
 const routes: Router.RouteParameters[] = [
   {

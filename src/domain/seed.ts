@@ -1,5 +1,5 @@
 import { BRAND, SECONDARY } from './colors';
-import { createColorId, createGroupId } from './ids';
+import { createColorId, createGroupId } from '../utils/ids';
 import type { ColorGroup, Palette, PaletteColor } from './types';
 
 /** The group migrated colours land in; every palette has at least this one. */

@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 /*
  * The one module that straddles versions, so it is the one that renames on
@@ -9,14 +9,14 @@ import { z } from 'zod';
 import {
   StoredPalettesSchema as StoredPalettesSchemaV0,
   type StoredPalettes as StoredPalettesV0,
-} from './schema/v0';
+} from "../domain/schema/v0";
 import {
   SCHEMA_VERSION as SCHEMA_VERSION_V1,
   StoredPalettesSchema as StoredPalettesSchemaV1,
-} from './schema/v1';
+} from "../domain/schema/v1";
 
-import { StoredPalettesSchema } from './types';
-import type { StoredPalettes } from './types';
+import type { StoredPalettes } from "./types";
+import { StoredPalettesSchema } from "./types";
 
 /*
  * The version ladder for `lliw.palettes` and for export files.
@@ -90,7 +90,7 @@ const VERSIONS: VersionStep[] = [
  * reason the tag exists at all.
  */
 const claimedVersion = (value: unknown): unknown =>
-  typeof value === 'object' && value !== null && 'schemaVersion' in value
+  typeof value === "object" && value !== null && "schemaVersion" in value
     ? (value as { schemaVersion: unknown }).schemaVersion
     : 0;
 
@@ -101,7 +101,10 @@ const claimedVersion = (value: unknown): unknown =>
  * distinguishable using VERSIONS alone — and "appending an entry is all it
  * takes" would otherwise be an assertion nothing checks.
  */
-export const runLadder = (versions: VersionStep[], value: unknown): unknown | null => {
+export const runLadder = (
+  versions: VersionStep[],
+  value: unknown,
+): unknown | null => {
   const index = versions.findIndex((v) => v.version === claimedVersion(value));
   if (index === -1) return null;
 
@@ -141,7 +144,7 @@ export const readPalettePayload = (value: unknown): StoredPalettes | null => {
  * schemaVersion anywhere and carried its palettes as a bare array beside them.
  */
 export const readExportPayload = (value: unknown): StoredPalettes | null => {
-  if (typeof value !== 'object' || value === null) return null;
-  if ('schemaVersion' in value) return readPalettePayload(value);
+  if (typeof value !== "object" || value === null) return null;
+  if ("schemaVersion" in value) return readPalettePayload(value);
   return readPalettePayload((value as { palettes?: unknown }).palettes);
 };

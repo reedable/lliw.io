@@ -32,7 +32,7 @@ const SettingsPage = () => {
     const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
     const a = document.createElement('a');
     a.href = url;
-    a.download = `lliw-palettes-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `lliwio-palettes-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     // Revoking immediately can cancel the download in some browsers.
     setTimeout(() => URL.revokeObjectURL(url), 1000);

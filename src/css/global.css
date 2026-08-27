@@ -4,10 +4,10 @@
   --palette-name-size: 16px;
   --palette-name-padding: 10px 16px;
   --palette-fab-gap: 16px;
-  --lliw-tabbar-gap: 16px;
-  --lliw-title-gap: 12px;
-  --lliw-card-inset: 20px;
-  --lliw-card-gap: 20px;
+  --lliwio-tabbar-gap: 16px;
+  --lliwio-title-gap: 12px;
+  --lliwio-card-inset: 20px;
+  --lliwio-card-gap: 20px;
 }
 
 .navbar-large-hidden.navbar-large {
@@ -15,8 +15,8 @@
 }
 
 .toolbar-bottom .toolbar-inner {
-  top: calc(var(--f7-safe-area-bottom) - var(--lliw-tabbar-gap));
-  bottom: var(--lliw-tabbar-gap);
+  top: calc(var(--f7-safe-area-bottom) - var(--lliwio-tabbar-gap));
+  bottom: var(--lliwio-tabbar-gap);
 }
 
 .toolbar-bottom.toolbar-hidden,

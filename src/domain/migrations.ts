@@ -101,10 +101,7 @@ const claimedVersion = (value: unknown): unknown =>
  * distinguishable using VERSIONS alone — and "appending an entry is all it
  * takes" would otherwise be an assertion nothing checks.
  */
-export const runLadder = (
-  versions: VersionStep[],
-  value: unknown,
-): unknown | null => {
+export const runLadder = (versions: VersionStep[], value: unknown): unknown | null => {
   const index = versions.findIndex((v) => v.version === claimedVersion(value));
   if (index === -1) return null;
 

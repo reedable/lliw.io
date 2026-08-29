@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 /*
  * Version 1 — the current palette schema. types.ts re-exports from here.

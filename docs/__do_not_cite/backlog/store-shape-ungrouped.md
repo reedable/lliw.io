@@ -6,7 +6,7 @@
 interface Palette {
   id: string;
   name: string;
-  ungrouped: PaletteColor[];  // colours before the first group header
+  ungrouped: PaletteColor[]; // colours before the first group header
   groups: ColorGroup[];
 }
 ```

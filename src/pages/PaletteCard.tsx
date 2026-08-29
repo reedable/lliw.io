@@ -1,5 +1,5 @@
-import { useRef } from 'react';
-import type { CSSProperties } from 'react';
+import { useRef } from "react";
+import type { CSSProperties } from "react";
 import {
   Block,
   Fab,
@@ -12,14 +12,14 @@ import {
   SwipeoutActions,
   SwipeoutButton,
   f7,
-} from 'framework7-react';
-import { TERTIARY } from '../domain/colors';
-import store, { allColors, flattenPalette } from '../domain/store';
-import type { Palette, PaletteItem } from '../domain/types';
-import { createGroupId } from '../utils/ids';
-import { useExpandableCard } from '../hooks/useExpandableCard';
-import { useSwipeDown } from '../hooks/useSwipeDown';
-import styles from './PaletteCard.module.css';
+} from "framework7-react";
+import { TERTIARY } from "../domain/colors";
+import store, { allColors, flattenPalette } from "../domain/store";
+import type { Palette, PaletteItem } from "../domain/types";
+import { createGroupId } from "../utils/ids";
+import { useExpandableCard } from "../hooks/useExpandableCard";
+import { useSwipeDown } from "../hooks/useSwipeDown";
+import styles from "./PaletteCard.module.css";
 
 const DEFAULT_COLOR = TERTIARY.gray;
 
@@ -37,24 +37,25 @@ const PaletteCard = ({ palette, expanded, editing, onExpand, onCollapse }: Palet
   const { cardRef, holderRef, contentRef, lifted, phase, style } = useExpandableCard(expanded);
 
   useSwipeDown(heroRef, onCollapse, {
-    enabled: phase === 'open',
+    enabled: phase === "open",
     getScroller: () => contentRef.current,
   });
 
   const deletePalette = () => {
-    f7.dialog.confirm(`Delete “${palette.name}”? This cannot be undone.`, 'Delete palette', () => {
+    f7.dialog.confirm(`Delete “${palette.name}”? This cannot be undone.`, "Delete palette", () => {
       onCollapse();
-      store.dispatch('deletePalette', { id: palette.id });
+      store.dispatch("deletePalette", { id: palette.id });
     });
   };
 
   const addColor = () => {
     const groupId = palette.groups[palette.groups.length - 1]?.id;
-    if (groupId) store.dispatch('addColor', { paletteId: palette.id, groupId, value: DEFAULT_COLOR });
+    if (groupId)
+      store.dispatch("addColor", { paletteId: palette.id, groupId, value: DEFAULT_COLOR });
   };
 
   const addGroup = () => {
-    store.dispatch('addGroup', {
+    store.dispatch("addGroup", {
       paletteId: palette.id,
       id: createGroupId(),
       name: `Group ${palette.groups.length + 1}`,
@@ -68,11 +69,11 @@ const PaletteCard = ({ palette, expanded, editing, onExpand, onCollapse }: Palet
     <>
       <div
         ref={holderRef}
-        className={`${styles.pcardHolder}${lifted ? ` ${styles.isHolding}` : ''}`}
+        className={`${styles.pcardHolder}${lifted ? ` ${styles.isHolding}` : ""}`}
       />
       <div
         ref={cardRef}
-        className={`${styles.pcard}${phase === 'open' ? ` ${styles.isOpen}` : ''}${lifted ? ` ${styles.isLifted}` : ''}`}
+        className={`${styles.pcard}${phase === "open" ? ` ${styles.isOpen}` : ""}${lifted ? ` ${styles.isLifted}` : ""}`}
         style={style}
         onClick={lifted ? undefined : onExpand}
       >
@@ -81,10 +82,7 @@ const PaletteCard = ({ palette, expanded, editing, onExpand, onCollapse }: Palet
             <div ref={heroRef} className={styles.paletteHero}>
               <div className={styles.paletteSwatches}>
                 {colors.map((color) => (
-                  <div
-                    key={color.id}
-                    style={{ '--tile-color': color.value } as CSSProperties}
-                  />
+                  <div key={color.id} style={{ "--tile-color": color.value } as CSSProperties} />
                 ))}
               </div>
               <input
@@ -93,7 +91,7 @@ const PaletteCard = ({ palette, expanded, editing, onExpand, onCollapse }: Palet
                 aria-label="Palette name"
                 value={palette.name}
                 onChange={(event) =>
-                  store.dispatch('renamePalette', { id: palette.id, name: event.target.value })
+                  store.dispatch("renamePalette", { id: palette.id, name: event.target.value })
                 }
               />
             </div>
@@ -106,7 +104,7 @@ const PaletteCard = ({ palette, expanded, editing, onExpand, onCollapse }: Palet
               sortableEnabled={editing}
               sortableMoveElements={false}
               onSortableSort={(sortData: { from: number; to: number }) =>
-                store.dispatch('moveItem', {
+                store.dispatch("moveItem", {
                   paletteId: palette.id,
                   from: sortData.from,
                   to: sortData.to,
@@ -114,7 +112,7 @@ const PaletteCard = ({ palette, expanded, editing, onExpand, onCollapse }: Palet
               }
             >
               {items.map((item) =>
-                item.kind === 'group' ? (
+                item.kind === "group" ? (
                   <ListItem key={item.group.id} className={styles.paletteGroup}>
                     <input
                       slot="title"
@@ -123,7 +121,7 @@ const PaletteCard = ({ palette, expanded, editing, onExpand, onCollapse }: Palet
                       aria-label="Group name"
                       value={item.group.name}
                       onChange={(event) =>
-                        store.dispatch('renameGroup', {
+                        store.dispatch("renameGroup", {
                           paletteId: palette.id,
                           groupId: item.group.id,
                           name: event.target.value,
@@ -142,14 +140,14 @@ const PaletteCard = ({ palette, expanded, editing, onExpand, onCollapse }: Palet
                     <div
                       slot="media"
                       className={styles.paletteChip}
-                      style={{ '--tile-color': item.color.value } as CSSProperties}
+                      style={{ "--tile-color": item.color.value } as CSSProperties}
                     />
                     <SwipeoutActions right>
                       <SwipeoutButton
                         close
                         color="red"
                         onClick={() =>
-                          store.dispatch('removeColor', {
+                          store.dispatch("removeColor", {
                             paletteId: palette.id,
                             colorId: item.color.id,
                           })

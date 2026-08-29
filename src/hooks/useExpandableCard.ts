@@ -1,10 +1,10 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import type { CSSProperties } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 
 /** Must match the card geometry transition in PaletteCard.module.css. */
 export const EXPANDABLE_CARD_TRANSITION_MS = 300;
 
-type Phase = 'idle' | 'pinned' | 'open';
+type Phase = "idle" | "pinned" | "open";
 
 interface Rect {
   top: number;
@@ -49,26 +49,26 @@ export const useExpandableCard = (expanded: boolean) => {
   const holderRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const unwindRef = useRef(0);
-  const [phase, setPhase] = useState<Phase>('idle');
+  const [phase, setPhase] = useState<Phase>("idle");
   const [rect, setRect] = useState<Rect | null>(null);
-  const lifted = phase !== 'idle';
+  const lifted = phase !== "idle";
 
   useEffect(() => () => cancelAnimationFrame(unwindRef.current), []);
 
   // Pin before paint so the in-flow-to-fixed switch is invisible.
   useLayoutEffect(() => {
-    if (!expanded || phase !== 'idle' || !cardRef.current) return;
+    if (!expanded || phase !== "idle" || !cardRef.current) return;
     cancelAnimationFrame(unwindRef.current);
     setRect(readRect(cardRef.current));
-    setPhase('pinned');
+    setPhase("pinned");
   }, [expanded, phase]);
 
   // Two frames ensure the pinned rectangle is painted before it expands.
   useEffect(() => {
-    if (!expanded || phase !== 'pinned') return;
+    if (!expanded || phase !== "pinned") return;
     let inner = 0;
     const outer = requestAnimationFrame(() => {
-      inner = requestAnimationFrame(() => setPhase('open'));
+      inner = requestAnimationFrame(() => setPhase("open"));
     });
     return () => {
       cancelAnimationFrame(outer);
@@ -78,14 +78,14 @@ export const useExpandableCard = (expanded: boolean) => {
 
   // Aim at the holder and unwind its scroller while the geometry contracts.
   useLayoutEffect(() => {
-    if (expanded || phase !== 'open') return;
+    if (expanded || phase !== "open") return;
     if (!holderRef.current) {
-      setPhase('idle');
+      setPhase("idle");
       setRect(null);
       return;
     }
     setRect(readRect(holderRef.current));
-    setPhase('pinned');
+    setPhase("pinned");
 
     const content = contentRef.current;
     const from = content?.scrollTop ?? 0;
@@ -102,21 +102,21 @@ export const useExpandableCard = (expanded: boolean) => {
 
   // Drop fixed geometry only after it reaches the measured row rectangle.
   useEffect(() => {
-    if (expanded || phase !== 'pinned') return;
+    if (expanded || phase !== "pinned") return;
     const timer = setTimeout(() => {
-      setPhase('idle');
+      setPhase("idle");
       setRect(null);
     }, EXPANDABLE_CARD_TRANSITION_MS);
     return () => clearTimeout(timer);
   }, [expanded, phase]);
 
   const style: CSSProperties =
-    phase === 'idle' || !rect
+    phase === "idle" || !rect
       ? {}
-      : phase === 'open'
-        ? { position: 'fixed', margin: 0, top: 0, left: 0, width: '100vw', height: '100dvh' }
+      : phase === "open"
+        ? { position: "fixed", margin: 0, top: 0, left: 0, width: "100vw", height: "100dvh" }
         : {
-            position: 'fixed',
+            position: "fixed",
             margin: 0,
             top: rect.top,
             left: rect.left,

@@ -1,17 +1,21 @@
 {
   "name": "lliw.io",
-  "private": true,
   "version": "1.1.0",
+  "private": true,
   "description": "Colour palette tool with WCAG contrast checking, installable as a PWA.",
+  "homepage": "https://reedable.github.io/lliw.io/",
+  "license": "UNLICENSED",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/reedable/lliw.io.git"
   },
-  "homepage": "https://reedable.github.io/lliw.io/",
-  "license": "UNLICENSED",
   "scripts": {
     "start": "npm run dev",
     "dev": "cross-env NODE_ENV=development vite",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -19,12 +23,6 @@
     "generate-app-icons": "npx --package framework7-cli framework7 assets",
     "postinstall": "cpy --flat ./node_modules/framework7-icons/fonts/*.* ./src/fonts/ && cpy --flat ./node_modules/material-icons/iconfont/*.* ./src/fonts/"
   },
-  "browserslist": [
-    "IOS >= 15",
-    "Safari >= 15",
-    "last 5 Chrome versions",
-    "last 5 Firefox versions"
-  ],
   "dependencies": {
     "colorjs.io": "^0.7.1",
     "framework7": "^9.1.2",
@@ -43,10 +41,18 @@
     "@vitejs/plugin-react": "^6.0.5",
     "cpy-cli": "^7.0.0",
     "cross-env": "^10.1.0",
+    "oxfmt": "^0.65.0",
+    "oxlint": "^1.80.0",
     "postcss-preset-env": "^11.3.2",
     "typescript": "^7.0.2",
     "vite": "^8.2.1",
     "vitest": "^4.1.11",
     "workbox-cli": "^7.4.1"
-  }
+  },
+  "browserslist": [
+    "IOS >= 15",
+    "Safari >= 15",
+    "last 5 Chrome versions",
+    "last 5 Firefox versions"
+  ]
 }

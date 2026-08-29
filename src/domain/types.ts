@@ -1,6 +1,6 @@
-import { z } from 'zod';
+import { z } from "zod";
 
-import * as current from './schema/v1';
+import * as current from "./schema/v1";
 
 /*
  * The app's view of the data. Everything versioned is re-exported from
@@ -55,8 +55,8 @@ export type ColorGroup = current.ColorGroup;
 export type Palette = current.Palette;
 export type StoredPalettes = current.StoredPalettes;
 
-export const CONFORMANCE_LEVELS = ['AAA', 'AA', 'A'] as const;
-export const THEMES = ['auto', 'ios', 'md'] as const;
+export const CONFORMANCE_LEVELS = ["AAA", "AA", "A"] as const;
+export const THEMES = ["auto", "ios", "md"] as const;
 
 /** The conformance tab the colour page opens on. */
 export const ConformanceSettingSchema = z.enum(CONFORMANCE_LEVELS);
@@ -91,5 +91,5 @@ export type Settings = z.infer<typeof SettingsSchema>;
  * for interpreting a drop; it is never stored. The folds live in store.ts.
  */
 export type PaletteItem =
-  | { kind: 'color'; color: PaletteColor }
-  | { kind: 'group'; group: ColorGroup };
+  | { kind: "color"; color: PaletteColor }
+  | { kind: "group"; group: ColorGroup };

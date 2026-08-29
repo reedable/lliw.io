@@ -66,10 +66,7 @@
 .paletteSwatches > div {
   flex: 1 1 0;
   background-color: #fff;
-  background-image: linear-gradient(
-    var(--tile-color, transparent),
-    var(--tile-color, transparent)
-  );
+  background-image: linear-gradient(var(--tile-color, transparent), var(--tile-color, transparent));
 }
 .paletteHero > input[type="text"] {
   flex: 0 0 auto;
@@ -106,10 +103,7 @@
   border-radius: 6px;
   border: 1px solid rgba(0, 0, 0, 0.12);
   background-color: #fff;
-  background-image: linear-gradient(
-    var(--tile-color, transparent),
-    var(--tile-color, transparent)
-  );
+  background-image: linear-gradient(var(--tile-color, transparent), var(--tile-color, transparent));
 }
 .paletteEmpty {
   opacity: 0.55;

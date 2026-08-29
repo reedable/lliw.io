@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 /*
  * FROZEN — version 0. Do not edit. Do not import anything from outside this

@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
-import { Swiper, SwiperSlide } from 'swiper/react';
-import { Pagination } from 'swiper/modules';
-import 'swiper/css';
-import 'swiper/css/pagination';
+import { useEffect, useRef, useState } from "react";
+import { Swiper, SwiperSlide } from "swiper/react";
+import { Pagination } from "swiper/modules";
+import "swiper/css";
+import "swiper/css/pagination";
 import {
   Page,
   Navbar,
@@ -15,13 +15,13 @@ import {
   ListInput,
   f7,
   useStore,
-} from 'framework7-react';
-import type { Router } from 'framework7/types';
-import store, { allColors, findColor } from '../domain/store';
-import type { Palette, Settings } from '../domain/types';
-import { canonical, contrastRatio, flatten } from '../utils/contrast';
-import { useSwipeDown } from '../hooks/useSwipeDown';
-import styles from './ColorPage.module.css';
+} from "framework7-react";
+import type { Router } from "framework7/types";
+import store, { allColors, findColor } from "../domain/store";
+import type { Palette, Settings } from "../domain/types";
+import { canonical, contrastRatio, flatten } from "../utils/contrast";
+import { useSwipeDown } from "../hooks/useSwipeDown";
+import styles from "./ColorPage.module.css";
 
 /**
  * #rgb, #rgba, #rrggbb or #rrggbbaa. Anything else is treated as still being
@@ -36,7 +36,7 @@ interface ColorPageProps {
 }
 
 // Every palette is implicitly paired against these two as well.
-const BASE_COLORS = ['#ffffff', '#000000'];
+const BASE_COLORS = ["#ffffff", "#000000"];
 
 /*
  * Filter tabs. Each shows pairings meeting *at least* its bar, keyed to normal
@@ -48,7 +48,7 @@ const BASE_COLORS = ['#ffffff', '#000000'];
  * SC 1.4.11 for non-text contrast and by SC 1.4.3 for large text. So the tabs form
  * a real ladder of WCAG numbers, but the "A" label is ours, not the spec's.
  */
-const FILTERS = ['AAA', 'AA', 'A', 'All'] as const;
+const FILTERS = ["AAA", "AA", "A", "All"] as const;
 type Filter = (typeof FILTERS)[number];
 
 const MIN_RATIO: Record<Filter, number> = {
@@ -93,7 +93,7 @@ interface ComboProps {
 const Combo = ({ background, foreground, label, hex }: ComboProps) => (
   <div
     className={styles.combo}
-    style={{ '--tile-color': background, color: foreground } as React.CSSProperties}
+    style={{ "--tile-color": background, color: foreground } as React.CSSProperties}
   >
     <span className={styles.comboLarge}>Aa</span>
     <span className={styles.comboSmall}>Small text sample</span>
@@ -106,8 +106,8 @@ const Combo = ({ background, foreground, label, hex }: ComboProps) => (
 
 const ColorPage = ({ f7route, f7router }: ColorPageProps) => {
   const { paletteId, colorId } = f7route.params;
-  const palettes = useStore('palettes') as Palette[];
-  const settings = useStore('settings') as Settings;
+  const palettes = useStore("palettes") as Palette[];
+  const settings = useStore("settings") as Settings;
 
   // Seeds the initial tab only. Changing the setting later does not retroactively
   // move a tab the user has already switched on this page.
@@ -118,7 +118,7 @@ const ColorPage = ({ f7route, f7router }: ColorPageProps) => {
    * colour the whole page shows without navigating — F7 runs with
    * browserHistory: false, so there is no address bar to leave stale.
    */
-  const [activeId, setActiveId] = useState(colorId ?? '');
+  const [activeId, setActiveId] = useState(colorId ?? "");
 
   /*
    * Framework7 owns the selected-tab pill: it appends a `.tab-link-highlight`
@@ -162,7 +162,7 @@ const ColorPage = ({ f7route, f7router }: ColorPageProps) => {
    */
   const heroRef = useRef<HTMLElement | null>(null);
   useSwipeDown(heroRef, () => f7router.back(), {
-    getScroller: () => heroRef.current?.closest<HTMLElement>('.page-content'),
+    getScroller: () => heroRef.current?.closest<HTMLElement>(".page-content"),
   });
 
   // The colour can vanish while this page is open — deleted via swipe on the card
@@ -242,10 +242,10 @@ const ColorPage = ({ f7route, f7router }: ColorPageProps) => {
             <Link
               key={f}
               href={false}
-              className={f === filter ? 'tab-link tab-link-active' : 'tab-link'}
+              className={f === filter ? "tab-link tab-link-active" : "tab-link"}
               onClick={(e: React.MouseEvent) => {
                 toolbarElRef.current = (e.currentTarget as HTMLElement).closest<HTMLElement>(
-                  '.toolbar',
+                  ".toolbar",
                 );
                 setFilter(f);
               }}
@@ -269,7 +269,7 @@ const ColorPage = ({ f7route, f7router }: ColorPageProps) => {
          * colour is flattened onto the base first. Handing contrast-color() the
          * raw value would have it pick a contrast against a colour nobody sees.
          */
-        style={{ '--hero-color': flatten(color.value) } as React.CSSProperties}
+        style={{ "--hero-color": flatten(color.value) } as React.CSSProperties}
         modules={[Pagination]}
         /*
          * dynamicBullets keeps only a few bullets on screen and slides the window
@@ -292,7 +292,7 @@ const ColorPage = ({ f7route, f7router }: ColorPageProps) => {
         }}
       >
         {flat.map((c) => (
-          <SwiperSlide key={c.id} style={{ '--tile-color': c.value } as React.CSSProperties} />
+          <SwiperSlide key={c.id} style={{ "--tile-color": c.value } as React.CSSProperties} />
         ))}
       </Swiper>
 
@@ -303,7 +303,7 @@ const ColorPage = ({ f7route, f7router }: ColorPageProps) => {
           placeholder="Color name"
           value={color.name}
           onInput={(e: any) =>
-            store.dispatch('renameColor', {
+            store.dispatch("renameColor", {
               paletteId: palette.id,
               colorId: color.id,
               name: e.target.value,
@@ -321,7 +321,7 @@ const ColorPage = ({ f7route, f7router }: ColorPageProps) => {
             // Only commit parseable values, so half-typed input like "#2a" never
             // reaches the store and blanks the hero and the tiles.
             if (HEX.test(next)) {
-              store.dispatch('setColorValue', {
+              store.dispatch("setColorValue", {
                 paletteId: palette.id,
                 colorId: color.id,
                 value: next,
@@ -333,8 +333,7 @@ const ColorPage = ({ f7route, f7router }: ColorPageProps) => {
 
       {visibleAsForeground.length === 0 && visibleAsBackground.length === 0 ? (
         <Block strong inset className={styles.colorEmpty}>
-          No pairing in this palette reaches {filter} ({MIN_RATIO[filter]}:1) against{' '}
-          {color.value}.
+          No pairing in this palette reaches {filter} ({MIN_RATIO[filter]}:1) against {color.value}.
         </Block>
       ) : (
         <>

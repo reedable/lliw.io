@@ -1,11 +1,11 @@
-import { createStore } from 'framework7/lite';
-import { z } from 'zod';
+import { createStore } from "framework7/lite";
+import { z } from "zod";
 
-import { TERTIARY } from './colors';
-import { createColorId, createGroupId } from '../utils/ids';
-import { DEFAULT_GROUP_NAME, SEED_PALETTES } from './seed';
-import { readExportPayload, readPalettePayload } from './migrations';
-import { SCHEMA_VERSION, SettingsSchema } from './types';
+import { TERTIARY } from "./colors";
+import { createColorId, createGroupId } from "../utils/ids";
+import { DEFAULT_GROUP_NAME, SEED_PALETTES } from "./seed";
+import { readExportPayload, readPalettePayload } from "./migrations";
+import { SCHEMA_VERSION, SettingsSchema } from "./types";
 import type {
   ColorGroup,
   Palette,
@@ -13,24 +13,22 @@ import type {
   PaletteItem,
   Settings,
   StoredPalettes,
-} from './types';
+} from "./types";
 
 export const flattenPalette = (palette: Palette): PaletteItem[] => [
-  ...palette.ungrouped.map((color): PaletteItem => ({ kind: 'color', color })),
+  ...palette.ungrouped.map((color): PaletteItem => ({ kind: "color", color })),
   ...palette.groups.flatMap((group): PaletteItem[] => [
-    { kind: 'group', group },
-    ...group.colors.map((color): PaletteItem => ({ kind: 'color', color })),
+    { kind: "group", group },
+    ...group.colors.map((color): PaletteItem => ({ kind: "color", color })),
   ]),
 ];
 
 /** Walks the flat order back into groups: each header opens one, colours fill it. */
-const rebuildPalette = (
-  items: PaletteItem[],
-): Pick<Palette, 'ungrouped' | 'groups'> => {
+const rebuildPalette = (items: PaletteItem[]): Pick<Palette, "ungrouped" | "groups"> => {
   const ungrouped: PaletteColor[] = [];
   const groups: ColorGroup[] = [];
   items.forEach((item) => {
-    if (item.kind === 'group') {
+    if (item.kind === "group") {
       groups.push({ ...item.group, colors: [] });
     } else if (groups.length === 0) {
       ungrouped.push(item.color);
@@ -55,13 +53,13 @@ interface AppState {
   settings: Settings;
 }
 
-const SETTINGS_KEY = 'lliw.settings';
-const PALETTES_KEY = 'lliw.palettes';
+const SETTINGS_KEY = "lliw.settings";
+const PALETTES_KEY = "lliw.palettes";
 
 const DEFAULT_SETTINGS: Settings = {
-  defaultConformance: 'AAA',
+  defaultConformance: "AAA",
   showBaseColors: true,
-  theme: 'auto',
+  theme: "auto",
 };
 
 /*
@@ -88,8 +86,6 @@ const saveSettings = (settings: Settings) => {
     // Storage can be unavailable or full; the in-memory state is still correct.
   }
 };
-
-
 
 /*
  * Written as an envelope so the payload carries its own version. Reading goes
@@ -125,7 +121,7 @@ const savePalettes = (palettes: Palette[]) => {
  * rather than "corrupt"; `schemaVersion` inside the payload is what lets an
  * older file be recognised and upgraded rather than misread.
  */
-const EXPORT_FORMAT = 'lliw.io/palettes';
+const EXPORT_FORMAT = "lliw.io/palettes";
 
 interface PaletteExport {
   format: typeof EXPORT_FORMAT;
@@ -148,7 +144,7 @@ export const parseImport = (text: string): ImportResult => {
   try {
     parsed = JSON.parse(text);
   } catch {
-    return { ok: false, reason: 'That file is not valid JSON.' };
+    return { ok: false, reason: "That file is not valid JSON." };
   }
 
   /*
@@ -157,7 +153,7 @@ export const parseImport = (text: string): ImportResult => {
    * authority in both cases.
    */
   if (!z.object({ format: z.literal(EXPORT_FORMAT) }).safeParse(parsed).success) {
-    return { ok: false, reason: 'That file was not exported from lliw.io.' };
+    return { ok: false, reason: "That file was not exported from lliw.io." };
   }
   /*
    * Same ladder as stored data: an export written before versioning existed is
@@ -166,7 +162,7 @@ export const parseImport = (text: string): ImportResult => {
    */
   const payload = readExportPayload(parsed);
   if (payload === null) {
-    return { ok: false, reason: 'That file is a lliw.io export, but it could not be read.' };
+    return { ok: false, reason: "That file is a lliw.io export, but it could not be read." };
   }
   return { ok: true, palettes: payload.palettes };
 };
@@ -242,13 +238,13 @@ const store = createStore({
     addPalette({ state }: StoreCtx, { id }: { id: string }) {
       const newPalette: Palette = {
         id,
-        name: 'Untitled',
+        name: "Untitled",
         ungrouped: [],
         groups: [
           {
             id: createGroupId(),
             name: DEFAULT_GROUP_NAME,
-            colors: [{ id: createColorId(), name: 'Color 1', value: TERTIARY.gray }],
+            colors: [{ id: createColorId(), name: "Color 1", value: TERTIARY.gray }],
           },
         ],
       };
@@ -274,7 +270,10 @@ const store = createStore({
       );
     },
     /* Colours go with the group; deleting is the only way to remove them wholesale. */
-    removeGroup({ state }: StoreCtx, { paletteId, groupId }: { paletteId: string; groupId: string }) {
+    removeGroup(
+      { state }: StoreCtx,
+      { paletteId, groupId }: { paletteId: string; groupId: string },
+    ) {
       updateGroups(state, paletteId, (groups) => groups.filter((g) => g.id !== groupId));
     },
     /* Appends to a named group. Numbering counts the whole palette, so names stay
@@ -289,10 +288,7 @@ const store = createStore({
           g.id === groupId
             ? {
                 ...g,
-                colors: [
-                  ...g.colors,
-                  { id: createColorId(), name: `Color ${total + 1}`, value },
-                ],
+                colors: [...g.colors, { id: createColorId(), name: `Color ${total + 1}`, value }],
               }
             : g,
         );

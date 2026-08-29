@@ -4,15 +4,15 @@
  */
 
 export const BRAND = {
-  red: '#C8102E',
-  white: '#FFFFFF',
-  green: '#00B140',
+  red: "#C8102E",
+  white: "#FFFFFF",
+  green: "#00B140",
 } as const;
 
 export const SECONDARY = {
-  blue: '#012169',
-  yellow: '#FFFF00',
-  black: '#000000',
+  blue: "#012169",
+  yellow: "#FFFF00",
+  black: "#000000",
 } as const;
 
 /*
@@ -22,7 +22,7 @@ export const SECONDARY = {
  * relative luminance >= 0.30 against black and <= 0.10 against white.
  */
 export const TERTIARY = {
-  gray: '#757575',
+  gray: "#757575",
 } as const;
 
 export type BrandColor = (typeof BRAND)[keyof typeof BRAND];

@@ -2,10 +2,10 @@
 
 Measured from the build on 2026-08-23:
 
-| | raw | gzip |
-|---|---|---|
-| `index.js` | 1,206 kB | 341 kB |
-| `index.css` | 512 kB | 75 kB |
+|             | raw      | gzip   |
+| ----------- | -------- | ------ |
+| `index.js`  | 1,206 kB | 341 kB |
+| `index.css` | 512 kB   | 75 kB  |
 
 Vite emits its own warning that chunks exceed 500 kB. The service worker
 precaches 15 URLs totalling 2.33 MB, all up front — there is no lazy chunk, which

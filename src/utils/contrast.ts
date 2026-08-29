@@ -1,4 +1,4 @@
-import Color from 'colorjs.io';
+import Color from "colorjs.io";
 
 /*
  * colorjs.io's contrastWCAG21 ignores alpha entirely: #C8102E00 — fully
@@ -17,7 +17,7 @@ import Color from 'colorjs.io';
  * that renders a colour (the combo, chip, and hero-slide rules in the page CSS
  * modules). If the two ever disagree, the number and the picture disagree.
  */
-const BASE = '#ffffff';
+const BASE = "#ffffff";
 
 /**
  * Alpha-blends `fg` over `bg` in sRGB: `a*fg + (1-a)*bg` per channel. An opaque
@@ -32,10 +32,10 @@ export const composite = (fg: Color, bg: Color): Color => {
    * contributes nothing to the blend, which is what `none` means when a colour
    * is actually rendered.
    */
-  const f = fg.to('srgb').coords;
-  const b = bg.to('srgb').coords;
+  const f = fg.to("srgb").coords;
+  const b = bg.to("srgb").coords;
   const mix = (i: number) => a * (f[i] ?? 0) + (1 - a) * (b[i] ?? 0);
-  return new Color('srgb', [mix(0), mix(1), mix(2)]);
+  return new Color("srgb", [mix(0), mix(1), mix(2)]);
 };
 
 /**
@@ -49,7 +49,7 @@ export const composite = (fg: Color, bg: Color): Color => {
  */
 export const flatten = (value: string): string => {
   try {
-    return composite(new Color(value), new Color(BASE)).to('srgb').toString({ format: 'hex' });
+    return composite(new Color(value), new Color(BASE)).to("srgb").toString({ format: "hex" });
   } catch {
     return value;
   }
@@ -65,7 +65,7 @@ export const flatten = (value: string): string => {
  */
 export const canonical = (value: string): string => {
   try {
-    return new Color(value).to('srgb').toString({ format: 'hex' });
+    return new Color(value).to("srgb").toString({ format: "hex" });
   } catch {
     return value.toLowerCase();
   }

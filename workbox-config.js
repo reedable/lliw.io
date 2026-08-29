@@ -1,10 +1,10 @@
 module.exports = {
-  globDirectory: 'www/',
-  globPatterns: ['**/*.{woff,woff2,js,css,png,jpg,svg,html}'],
+  globDirectory: "www/",
+  globPatterns: ["**/*.{woff,woff2,js,css,png,jpg,svg,html}"],
   /* pass array of globs to exclude from caching */
   globIgnores: [],
   ignoreURLParametersMatching: [/^utm_/, /^fbclid$/],
-  swDest: 'www/service-worker.js',
+  swDest: "www/service-worker.js",
 
   /*
    * Without these two, Workbox's default lifecycle applies: a new worker installs

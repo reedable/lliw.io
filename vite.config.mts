@@ -39,11 +39,7 @@ export default defineConfig({
       generateScopedName: (name, filename, css) => {
         const baseName = path.basename(filename, ".css");
         const cleanName = baseName.split(".")[0];
-        const hash = crypto
-          .createHash("md5")
-          .update(css)
-          .digest("base64url")
-          .substring(0, 5);
+        const hash = crypto.createHash("md5").update(css).digest("base64url").substring(0, 5);
         return `__lliwio_${cleanName}_${name}_${hash}`;
       },
     },

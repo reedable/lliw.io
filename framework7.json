@@ -1,8 +1,5 @@
 {
-  "type": [
-    "web",
-    "pwa"
-  ],
+  "type": ["web", "pwa"],
   "name": "lliw.io",
   "framework": "react",
   "template": "tabs",

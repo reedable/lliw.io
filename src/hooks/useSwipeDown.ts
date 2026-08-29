@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
-import type { RefObject } from 'react';
+import { useEffect, useRef } from "react";
+import type { RefObject } from "react";
 
 /*
  * Swipe-down-to-dismiss, measured on whatever element is passed in. Either a
@@ -42,9 +42,12 @@ export const useSwipeDown = (
    * once per render — callers build fresh closures every time they render.
    */
   const onSwipeDownRef = useRef(onSwipeDown);
-  onSwipeDownRef.current = onSwipeDown;
   const getScrollerRef = useRef(getScroller);
-  getScrollerRef.current = getScroller;
+
+  useEffect(() => {
+    onSwipeDownRef.current = onSwipeDown;
+    getScrollerRef.current = getScroller;
+  }, [getScroller, onSwipeDown]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -91,15 +94,15 @@ export const useSwipeDown = (
       }
     };
 
-    target.addEventListener('touchstart', onStart, { passive: true });
-    target.addEventListener('touchmove', onMove, { passive: false });
-    target.addEventListener('touchend', onEnd, { passive: true });
-    target.addEventListener('touchcancel', onEnd, { passive: true });
+    target.addEventListener("touchstart", onStart, { passive: true });
+    target.addEventListener("touchmove", onMove, { passive: false });
+    target.addEventListener("touchend", onEnd, { passive: true });
+    target.addEventListener("touchcancel", onEnd, { passive: true });
     return () => {
-      target.removeEventListener('touchstart', onStart);
-      target.removeEventListener('touchmove', onMove);
-      target.removeEventListener('touchend', onEnd);
-      target.removeEventListener('touchcancel', onEnd);
+      target.removeEventListener("touchstart", onStart);
+      target.removeEventListener("touchmove", onMove);
+      target.removeEventListener("touchend", onEnd);
+      target.removeEventListener("touchcancel", onEnd);
     };
   }, [enabled, targetRef]);
 };

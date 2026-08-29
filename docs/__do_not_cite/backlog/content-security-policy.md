@@ -4,8 +4,10 @@
 above this meta tag:
 
 ```html
-<meta http-equiv="Content-Security-Policy"
-      content="default-src * 'self' 'unsafe-inline' 'unsafe-eval' data: content:">
+<meta
+  http-equiv="Content-Security-Policy"
+  content="default-src * 'self' 'unsafe-inline' 'unsafe-eval' data: content:"
+/>
 ```
 
 `default-src *` with `unsafe-inline` and `unsafe-eval` restricts nothing. It is

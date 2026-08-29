@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef } from "react";
 import {
   Page,
   Navbar,
@@ -10,27 +10,27 @@ import {
   Toggle,
   f7,
   useStore,
-} from 'framework7-react';
-import store, { buildExport, parseImport } from '../domain/store';
-import type { ConformanceSetting, Palette, Settings, ThemeSetting } from '../domain/types';
+} from "framework7-react";
+import store, { buildExport, parseImport } from "../domain/store";
+import type { ConformanceSetting, Palette, Settings, ThemeSetting } from "../domain/types";
 
-const CONFORMANCE_OPTIONS: ConformanceSetting[] = ['AAA', 'AA', 'A'];
+const CONFORMANCE_OPTIONS: ConformanceSetting[] = ["AAA", "AA", "A"];
 
 const THEME_OPTIONS: { value: ThemeSetting; label: string }[] = [
-  { value: 'auto', label: 'Automatic' },
-  { value: 'ios', label: 'iOS' },
-  { value: 'md', label: 'Material' },
+  { value: "auto", label: "Automatic" },
+  { value: "ios", label: "iOS" },
+  { value: "md", label: "Material" },
 ];
 
 const SettingsPage = () => {
-  const settings = useStore('settings') as Settings;
-  const palettes = useStore('palettes') as Palette[];
+  const settings = useStore("settings") as Settings;
+  const palettes = useStore("palettes") as Palette[];
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const exportPalettes = () => {
     const json = JSON.stringify(buildExport(palettes), null, 2);
-    const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
-    const a = document.createElement('a');
+    const url = URL.createObjectURL(new Blob([json], { type: "application/json" }));
+    const a = document.createElement("a");
     a.href = url;
     a.download = `lliwio-palettes-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
@@ -41,14 +41,14 @@ const SettingsPage = () => {
   const importFile = async (file: File) => {
     const result = parseImport(await file.text());
     if (!result.ok) {
-      f7.dialog.alert(result.reason, 'Import failed');
+      f7.dialog.alert(result.reason, "Import failed");
       return;
     }
     const existing = new Set(palettes.map((p) => p.id));
     const replaced = result.palettes.filter((p) => existing.has(p.id)).length;
     const added = result.palettes.length - replaced;
-    store.dispatch('importPalettes', { palettes: result.palettes });
-    f7.dialog.alert(`${added} added, ${replaced} replaced.`, 'Imported');
+    store.dispatch("importPalettes", { palettes: result.palettes });
+    f7.dialog.alert(`${added} added, ${replaced} replaced.`, "Imported");
   };
 
   /*
@@ -57,13 +57,13 @@ const SettingsPage = () => {
    * against a hardcoded resolution list — and without this the user has no way to
    * see which way the guess went.
    */
-  const activeTheme = document.documentElement.classList.contains('md') ? 'Material' : 'iOS';
+  const activeTheme = document.documentElement.classList.contains("md") ? "Material" : "iOS";
 
   const changeTheme = (theme: ThemeSetting) => {
-    store.dispatch('setSettings', { theme });
+    store.dispatch("setSettings", { theme });
     // F7 reads the theme once, in its constructor, and stamps it on <html>. There
     // is no supported way to restyle a running app, so this needs a fresh boot.
-    f7.dialog.confirm('Reload now to apply it?', 'Theme changed', () => location.reload());
+    f7.dialog.confirm("Reload now to apply it?", "Theme changed", () => location.reload());
   };
 
   return (
@@ -90,7 +90,7 @@ const SettingsPage = () => {
           label="Default WCAG conformance"
           value={settings.defaultConformance}
           onChange={(e: any) =>
-            store.dispatch('setSettings', { defaultConformance: e.target.value })
+            store.dispatch("setSettings", { defaultConformance: e.target.value })
           }
         >
           {CONFORMANCE_OPTIONS.map((level) => (
@@ -112,7 +112,7 @@ const SettingsPage = () => {
             slot="after"
             defaultChecked={settings.showBaseColors}
             onToggleChange={(checked: boolean) =>
-              store.dispatch('setSettings', { showBaseColors: checked })
+              store.dispatch("setSettings", { showBaseColors: checked })
             }
           />
         </ListItem>
@@ -137,7 +137,7 @@ const SettingsPage = () => {
         hidden
         onChange={(e) => {
           const file = e.target.files?.[0];
-          e.target.value = '';
+          e.target.value = "";
           if (file) importFile(file);
         }}
       />

@@ -20,7 +20,7 @@ Verified 2026-08-23 against `typescript@7.0.2`, by installing it and running it:
 - Peer range is `typescript >=4.8.4 <6.1.0`. An npm `overrides` entry silences
   ERESOLVE but has no effect on the runtime guard.
 - The documented workaround — run typescript-eslint against a side-by-side TS 6
-  — cannot be wired through npm here. `typescript` is a *peerDependency*, so it
+  — cannot be wired through npm here. `typescript` is a _peerDependency_, so it
   must resolve at root scope, and npm refuses to nest a second copy:
   `Conflicting peer dependency: typescript@6.0.3`.
 - Upstream: typescript-eslint#10940, "support for TS >=7.1". No release, no

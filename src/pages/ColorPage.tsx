@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import Color from "colorjs.io";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Pagination } from "swiper/modules";
 import "swiper/css";
@@ -6,6 +7,7 @@ import "swiper/css/pagination";
 import {
   Page,
   Navbar,
+  NavRight,
   Block,
   BlockTitle,
   Toolbar,
@@ -23,12 +25,58 @@ import { canonical, contrastRatio, flatten } from "../utils/contrast";
 import { useSwipeDown } from "../hooks/useSwipeDown";
 import styles from "./ColorPage.module.css";
 
-/**
- * #rgb, #rgba, #rrggbb or #rrggbbaa. Anything else is treated as still being
- * typed. The 4- and 8-digit forms carry alpha; colorjs.io parses both, and CSS
- * renders both, so an alpha value needs no separate representation.
- */
-const HEX = /^#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
+type ColorField = "hex" | "rgb" | "hsl" | "oklch";
+
+const COLOR_PLACEHOLDERS: Record<ColorField, string> = {
+  hex: "#000000",
+  rgb: "rgb(0, 0, 0)",
+  hsl: "hsl(0, 0%, 0%)",
+  oklch: "oklch(0% 0 0)",
+};
+
+const isValidColor = (value: string, field: ColorField): boolean => {
+  const matchesFormat =
+    field === "hex"
+      ? value.startsWith("#")
+      : (field === "rgb"
+          ? /^rgba?\([^()]*\)$/i
+          : field === "hsl"
+            ? /^hsla?\([^()]*\)$/i
+            : /^oklch\([^()]*\)$/i
+        ).test(value);
+  if (!matchesFormat || !CSS.supports("color", value)) return false;
+  try {
+    new Color(value);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const formatColor = (value: string, field: ColorField): string => {
+  try {
+    const parsed = new Color(value);
+    if (field === "hex") return parsed.to("srgb").toString({ format: "hex" });
+    if (field === "rgb") {
+      const channels = parsed
+        .to("srgb")
+        .coords.map((channel) => Number(((channel ?? 0) * 255).toFixed(10)));
+      return parsed.alpha < 1
+        ? `rgba(${channels.join(", ")}, ${parsed.alpha})`
+        : `rgb(${channels.join(", ")})`;
+    }
+    if (field === "hsl") {
+      const [hue, saturation, lightness] = parsed
+        .to("hsl")
+        .coords.map((channel) => Number((channel ?? 0).toFixed(10)));
+      const channels = `${hue}, ${saturation}%, ${lightness}%`;
+      return parsed.alpha < 1 ? `hsla(${channels}, ${parsed.alpha})` : `hsl(${channels})`;
+    }
+    return parsed.to(field).toString({ precision: 10 });
+  } catch {
+    return value;
+  }
+};
 
 interface ColorPageProps {
   f7route: Router.Route;
@@ -119,6 +167,25 @@ const ColorPage = ({ f7route, f7router }: ColorPageProps) => {
    * browserHistory: false, so there is no address bar to leave stale.
    */
   const [activeId, setActiveId] = useState(colorId ?? "");
+  const [navbarTop, setNavbarTop] = useState(0);
+
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+
+    // The keyboard can pan the visual viewport without scrolling page-content.
+    // Offset only the navbar so it stays at the visible top edge.
+    const updateNavbarTop = () => {
+      setNavbarTop(viewport.scale === 1 ? viewport.offsetTop : 0);
+    };
+    updateNavbarTop();
+    viewport.addEventListener("resize", updateNavbarTop);
+    viewport.addEventListener("scroll", updateNavbarTop);
+    return () => {
+      viewport.removeEventListener("resize", updateNavbarTop);
+      viewport.removeEventListener("scroll", updateNavbarTop);
+    };
+  }, []);
 
   /*
    * Framework7 owns the selected-tab pill: it appends a `.tab-link-highlight`
@@ -140,12 +207,13 @@ const ColorPage = ({ f7route, f7router }: ColorPageProps) => {
     (palette && findColor(palette, activeId)) ??
     (palette && colorId ? findColor(palette, colorId) : undefined);
 
-  /*
-   * Half-typed hex lives here rather than in the store. Tagged with the colour it
-   * belongs to, so swiping to another colour shows that colour's value instead of
-   * carrying the previous field's text across.
-   */
-  const [draft, setDraft] = useState<{ id: string; text: string } | null>(null);
+  // Keep edits local until the checkmark is tapped.
+  const [draft, setDraft] = useState<{
+    id: string;
+    name: string;
+    value: string;
+    inputs: Partial<Record<ColorField, string>>;
+  } | null>(null);
 
   /*
    * Swipe down on the hero to go back to the palette, the same gesture that
@@ -175,6 +243,40 @@ const ColorPage = ({ f7route, f7router }: ColorPageProps) => {
       </Page>
     );
   }
+
+  const editing = draft?.id === color.id ? draft : null;
+  const beginEditing = () => {
+    if (!editing) setDraft({ id: color.id, name: color.name, value: color.value, inputs: {} });
+  };
+  const editColor = (field: ColorField, text: string) => {
+    const current = editing ?? { id: color.id, name: color.name, value: color.value, inputs: {} };
+    const value = text.trim();
+    if (isValidColor(value, field)) {
+      setDraft({ ...current, value, inputs: { [field]: text } });
+    } else {
+      setDraft({ ...current, inputs: { ...current.inputs, [field]: text } });
+    }
+  };
+  const hasInvalidInput =
+    editing !== null &&
+    Object.entries(editing.inputs).some(
+      ([field, text]) => !isValidColor(text.trim(), field as ColorField),
+    );
+  const saveEdits = () => {
+    if (!editing || hasInvalidInput) return;
+    store.dispatch("renameColor", {
+      paletteId: palette.id,
+      colorId: color.id,
+      name: editing.name,
+    });
+    store.dispatch("setColorValue", {
+      paletteId: palette.id,
+      colorId: color.id,
+      value: editing.value,
+    });
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    setDraft(null);
+  };
 
   /*
    * Counterparts to pair this colour with: the rest of the palette, plus black and
@@ -224,7 +326,28 @@ const ColorPage = ({ f7route, f7router }: ColorPageProps) => {
 
   return (
     <Page name="color" noToolbar>
-      <Navbar title={color.name} subtitle={palette.name} backLink="Back" />
+      <Navbar
+        title={color.name}
+        subtitle={palette.name}
+        backLink="Back"
+        style={{ top: navbarTop }}
+      >
+        {editing && (
+          <NavRight>
+            <button
+              type="button"
+              className={styles.saveButton}
+              aria-label="Save changes"
+              disabled={hasInvalidInput}
+              onClick={saveEdits}
+            >
+              <span className="icon f7-icons" aria-hidden="true">
+                checkmark
+              </span>
+            </button>
+          </NavRight>
+        )}
+      </Navbar>
 
       <Toolbar tabbar bottom>
         {/*
@@ -277,7 +400,11 @@ const ColorPage = ({ f7route, f7router }: ColorPageProps) => {
          * colours would otherwise draw twenty dots across the hero.
          * dynamicMainBullets is how many stay full-size; the rest taper off.
          */
-        pagination={{ clickable: true, dynamicBullets: true, dynamicMainBullets: 3 }}
+        pagination={{
+          clickable: true,
+          dynamicBullets: true,
+          dynamicMainBullets: 3,
+        }}
         onSwiper={(swiper) => {
           heroRef.current = swiper.el;
         }}
@@ -288,7 +415,10 @@ const ColorPage = ({ f7route, f7router }: ColorPageProps) => {
         loop={flat.length > 1}
         onSlideChange={(swiper) => {
           const next = flat[swiper.realIndex];
-          if (next) setActiveId(next.id);
+          if (next && next.id !== color.id) {
+            setDraft(null);
+            setActiveId(next.id);
+          }
         }}
       >
         {flat.map((c) => (
@@ -301,34 +431,32 @@ const ColorPage = ({ f7route, f7router }: ColorPageProps) => {
           type="text"
           label="Name"
           placeholder="Color name"
-          value={color.name}
+          value={editing?.name ?? color.name}
+          onFocus={beginEditing}
           onInput={(e: any) =>
-            store.dispatch("renameColor", {
-              paletteId: palette.id,
-              colorId: color.id,
+            setDraft({
+              ...(editing ?? { id: color.id, name: color.name, value: color.value, inputs: {} }),
               name: e.target.value,
             })
           }
         />
-        <ListInput
-          type="text"
-          label="Hex"
-          placeholder="#000000"
-          value={draft && draft.id === color.id ? draft.text : color.value}
-          onInput={(e: any) => {
-            const next = e.target.value;
-            setDraft({ id: color.id, text: next });
-            // Only commit parseable values, so half-typed input like "#2a" never
-            // reaches the store and blanks the hero and the tiles.
-            if (HEX.test(next)) {
-              store.dispatch("setColorValue", {
-                paletteId: palette.id,
-                colorId: color.id,
-                value: next,
-              });
+
+        {(["hex", "rgb", "hsl", "oklch"] as const).map((field) => (
+          <ListInput
+            key={field}
+            type="text"
+            label={field}
+            placeholder={COLOR_PLACEHOLDERS[field]}
+            value={editing?.inputs[field] ?? formatColor(editing?.value ?? color.value, field)}
+            onFocus={beginEditing}
+            onInput={(e: any) => editColor(field, e.target.value)}
+            errorMessage={`Enter a complete ${field.toUpperCase()} color.`}
+            errorMessageForce={
+              editing?.inputs[field] !== undefined &&
+              !isValidColor(editing.inputs[field]!.trim(), field)
             }
-          }}
-        />
+          />
+        ))}
       </List>
 
       {visibleAsForeground.length === 0 && visibleAsBackground.length === 0 ? (

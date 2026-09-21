@@ -1,3 +1,28 @@
+.saveButton {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  flex-shrink: 0;
+  border: 1px solid #45c8ff;
+  border-radius: 50%;
+  background: #0088ff;
+  color: #b8f3ff;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 12%);
+  font: inherit;
+  cursor: pointer;
+}
+
+.saveButton :global(.f7-icons) {
+  font-size: 26px;
+}
+
+.saveButton:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 .colorHero {
   height: 220px;
   --swiper-pagination-color: #fff;

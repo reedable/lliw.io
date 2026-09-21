@@ -1,0 +1,25 @@
+.module {
+  --f7-color-picker-value-width: 8ch;
+  margin-left: 10px;
+  margin-right: 10px;
+}
+
+.slider :global(.range-bar) {
+  background-image: var(--channel-gradient);
+}
+
+.alpha :global(.range-bar) {
+  background-image:
+    var(--channel-gradient),
+    linear-gradient(to right, rgb(255 255 255 / 20%) 50%, rgb(0 0 0 / 20%) 50%),
+    linear-gradient(to left, rgb(255 255 255 / 20%) 50%, rgb(0 0 0 / 20%) 50%);
+  background-size:
+    100% 100%,
+    6px 3px,
+    6px 3px;
+  background-position:
+    0 0,
+    0 3px,
+    0 0;
+  background-repeat: repeat-y, repeat-x, repeat-x;
+}

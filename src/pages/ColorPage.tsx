@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import Color from "colorjs.io";
+import { colorChannels, formatChannels } from "../utils/colorEditing";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Pagination } from "swiper/modules";
 import "swiper/css";
@@ -15,6 +16,7 @@ import {
   Link,
   List,
   ListInput,
+  ListItem,
   f7,
   useStore,
 } from "framework7-react";
@@ -24,6 +26,9 @@ import type { Palette, Settings } from "../domain/types";
 import { canonical, contrastRatio, flatten } from "../utils/contrast";
 import { useSwipeDown } from "../hooks/useSwipeDown";
 import styles from "./ColorPage.module.css";
+import { RgbaSliders } from "./RgbaSliders";
+import { HslaSliders } from "./HslaSliders";
+import { OklchSliders } from "./OklchSliders";
 
 type ColorField = "hex" | "rgb" | "hsl" | "oklch";
 
@@ -55,24 +60,9 @@ const isValidColor = (value: string, field: ColorField): boolean => {
 
 const formatColor = (value: string, field: ColorField): string => {
   try {
-    const parsed = new Color(value);
-    if (field === "hex") return parsed.to("srgb").toString({ format: "hex" });
-    if (field === "rgb") {
-      const channels = parsed
-        .to("srgb")
-        .coords.map((channel) => Number(((channel ?? 0) * 255).toFixed(10)));
-      return parsed.alpha < 1
-        ? `rgba(${channels.join(", ")}, ${parsed.alpha})`
-        : `rgb(${channels.join(", ")})`;
-    }
-    if (field === "hsl") {
-      const [hue, saturation, lightness] = parsed
-        .to("hsl")
-        .coords.map((channel) => Number((channel ?? 0).toFixed(10)));
-      const channels = `${hue}, ${saturation}%, ${lightness}%`;
-      return parsed.alpha < 1 ? `hsla(${channels}, ${parsed.alpha})` : `hsl(${channels})`;
-    }
-    return parsed.to(field).toString({ precision: 10 });
+    return field === "hex"
+      ? new Color(value).to("srgb").toString({ format: "hex" })
+      : formatChannels(colorChannels(value, field), field);
   } catch {
     return value;
   }
@@ -326,12 +316,7 @@ const ColorPage = ({ f7route, f7router }: ColorPageProps) => {
 
   return (
     <Page name="color" noToolbar>
-      <Navbar
-        title={color.name}
-        subtitle={palette.name}
-        backLink="Back"
-        style={{ top: navbarTop }}
-      >
+      <Navbar title={color.name} subtitle={palette.name} backLink="Back" style={{ top: navbarTop }}>
         {editing && (
           <NavRight>
             <button
@@ -441,22 +426,48 @@ const ColorPage = ({ f7route, f7router }: ColorPageProps) => {
           }
         />
 
-        {(["hex", "rgb", "hsl", "oklch"] as const).map((field) => (
-          <ListInput
-            key={field}
-            type="text"
-            label={field}
-            placeholder={COLOR_PLACEHOLDERS[field]}
-            value={editing?.inputs[field] ?? formatColor(editing?.value ?? color.value, field)}
-            onFocus={beginEditing}
-            onInput={(e: any) => editColor(field, e.target.value)}
-            errorMessage={`Enter a complete ${field.toUpperCase()} color.`}
-            errorMessageForce={
-              editing?.inputs[field] !== undefined &&
-              !isValidColor(editing.inputs[field]!.trim(), field)
-            }
-          />
-        ))}
+        {(["hex", "rgb", "hsl", "oklch"] as const).map((field) =>
+          field !== "hex" ? (
+            <ListItem key={field}>
+              <div slot="inner" style={{ width: "100%" }}>
+                {field === "rgb" ? (
+                  <RgbaSliders
+                    key={color.id}
+                    value={editing?.value ?? color.value}
+                    onChange={(value) => editColor("rgb", value)}
+                  />
+                ) : field === "hsl" ? (
+                  <HslaSliders
+                    key={color.id}
+                    value={editing?.value ?? color.value}
+                    onChange={(value) => editColor("hsl", value)}
+                  />
+                ) : (
+                  <OklchSliders
+                    key={color.id}
+                    value={editing?.value ?? color.value}
+                    onChange={(value) => editColor("oklch", value)}
+                  />
+                )}
+              </div>
+            </ListItem>
+          ) : (
+            <ListInput
+              key={field}
+              type="text"
+              label={field}
+              placeholder={COLOR_PLACEHOLDERS[field]}
+              value={editing?.inputs[field] ?? formatColor(editing?.value ?? color.value, field)}
+              onFocus={beginEditing}
+              onInput={(e: any) => editColor(field, e.target.value)}
+              errorMessage={`Enter a complete ${field.toUpperCase()} color.`}
+              errorMessageForce={
+                editing?.inputs[field] !== undefined &&
+                !isValidColor(editing.inputs[field]!.trim(), field)
+              }
+            />
+          ),
+        )}
       </List>
 
       {visibleAsForeground.length === 0 && visibleAsBackground.length === 0 ? (

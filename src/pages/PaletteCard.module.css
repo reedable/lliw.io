@@ -116,7 +116,8 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  padding: 8px 16px var(--palette-fab-gap);
+  padding: 8px max(16px, var(--f7-safe-area-right, 0px))
+    max(var(--palette-fab-gap), var(--f7-safe-area-bottom, 0px)) 16px;
   background: none;
 }
 .paletteFooter :global(.fab) {
@@ -133,7 +134,10 @@
   backdrop-filter: saturate(180%) blur(16px);
   -webkit-backdrop-filter: saturate(180%) blur(16px);
 }
-.paletteAdd:global(.fab-right-bottom) {
+.paletteFooter .paletteAdd:global(.fab-right-bottom) {
+  /* The sticky footer owns placement; cancel Framework7's tabbar offsets. */
+  right: 0;
+  bottom: 0;
   margin: 0;
 }
 .paletteGroup {

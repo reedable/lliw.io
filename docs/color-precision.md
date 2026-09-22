@@ -59,3 +59,52 @@ RGB/alpha slider position mapping. Sliders use a million-position grid; numeric
 entry bypasses that grid and rounds by significant digits. Opening or focusing
 a field does not commit a color change. These checks do not constitute a browser
 interaction test.
+
+## Neutral normalization cutoff exploration
+
+`neutralPrecision.test.ts` tests normalization separately from significant digits.
+Run its tables with:
+
+```sh
+npm test -- src/utils/neutralPrecision.test.ts --disableConsoleIntercept --reporter=verbose
+```
+
+The corpus contains 4,127 known neutrals: all 1,024 gray levels in sRGB,
+those grays converted through OKLCH, Display P3 grays, uniformly spaced
+zero-chroma OKLCH colors, logarithmic samples near black and white, and the
+reported `oklch(0.666667 0 0 / 1)` example.
+
+An HSL-saturation-only threshold is unreliable near white. The previously
+suggested `1e-10` percentage-point threshold misses 13 known neutrals. One white
+round trip even produces a saturation magnitude of 300%, while its normalized
+RGB channel spread is only about `1.22e-15`. This is numerical instability in HSL
+near the endpoint, not meaningful chroma.
+
+Instead, measure `max(R,G,B) - min(R,G,B)` in **unclipped, encoded sRGB on the 0–1
+scale**. The maximum measured neutral spread is `1.5543122344752192e-15`.
+Among the tested thresholds, `1e-14` is the smallest that catches every neutral;
+`1e-15` misses 89. A proposed engineering cutoff of **`1e-12` RGB spread** adds
+roughly 640 times that observed maximum as numerical margin. This margin is a
+judgment, not a measured minimum or a universal guarantee.
+
+Additional checks:
+
+- All 6,138 adjacent-code near-neutrals (one channel one 10-bit code above or
+  below gray) remain non-neutral at `1e-12`.
+- A deliberately excessive `0.001` spread cutoff erases all 6,138 and changes
+  their quantized output, demonstrating the test's sensitivity.
+- Setting HSL hue and saturation to zero for the known neutrals preserves every
+  sampled 10-bit output code and alpha. Maximum RGB change: `7.95e-13` code steps.
+- Of 360 deliberately chromatic OKLCH probes (chroma `1e-4` through `1e-15`),
+  106 fall below the proposed cutoff. They are not all numerical noise: this
+  intentionally sacrifices extremely small chroma. Maximum measured change in
+  these probes is `4.38e-10` of a 10-bit code step; 254 probes remain untouched.
+
+The editor now uses the `1e-12` RGB-spread cutoff to detect neutrality and normalize
+**HSL hue and saturation together**, retaining lightness and alpha. It is not a
+generic rule for zeroing small RGB channels, OKLCH lightness/chroma, or alpha.
+Production normalization is in `colorChannels` in `src/utils/colorEditing.ts`,
+with regression tests for the reported example, near-white instability, and all
+6,138 adjacent-code near-neutrals. The tests do not exhaust all
+colors or guarantee identical quantization for arbitrary values exactly on a
+rounding boundary, HDR pipelines, or repeated conversions.

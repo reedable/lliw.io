@@ -1,7 +1,18 @@
 .module {
-  --f7-color-picker-value-width: 8ch;
+  --f7-color-picker-value-width: 10ch;
   margin-left: 10px;
   margin-right: 10px;
+}
+
+.channelValue input {
+  min-width: 0;
+  flex: 1 1 0;
+}
+
+.unit {
+  flex: 0 0 auto;
+  padding-right: 5px;
+  width: 1em;
 }
 
 .slider :global(.range-bar) {

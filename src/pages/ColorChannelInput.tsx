@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { significant } from "../utils/colorEditing";
+import styles from "./ColorSliders.module.css";
 
 /** Numeric entry commits on blur/Enter, like Framework7's picker value inputs. */
 export const ColorChannelInput = ({
@@ -19,7 +20,7 @@ export const ColorChannelInput = ({
 }) => {
   const [draft, setDraft] = useState<string | null>(null);
   return (
-    <div className="color-picker-slider-value">
+    <div className={`color-picker-slider-value ${styles.channelValue}`}>
       <input
         type="number"
         inputMode="decimal"
@@ -50,6 +51,11 @@ export const ColorChannelInput = ({
           }
         }}
       />
+      {unit && (
+        <span className={styles.unit} aria-hidden="true">
+          {unit}
+        </span>
+      )}
     </div>
   );
 };

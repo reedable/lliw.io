@@ -39,7 +39,11 @@ export const ColorSliders = ({
         ? [360, 100, 100, 1]
         : [1, Math.max(0.4, Math.ceil(channels[1] * 10) / 10), 360, 1];
   const units =
-    model === "rgb" ? ["", "", "", ""] : model === "hsl" ? ["°", "%", "%", ""] : ["%", "", "°", ""];
+    model === "rgb"
+      ? ["", "", "", ""]
+      : model === "hsl"
+        ? ["°", "%", "%", " "]
+        : [" ", " ", "°", " "];
   const change = (index: number, next: number) => {
     const updated = [...channels];
     updated[index] = next;
@@ -88,7 +92,6 @@ export const ColorSliders = ({
           <div className={`color-picker-module ${styles.module}`}>
             {labels.map((label, index) => {
               const digits = channelDigits(model, index);
-              const scale = model === "oklch" && index === 0 ? 100 : 1;
               const position = sliderPosition(channels[index], maximums[index]);
               return (
                 <div className="color-picker-slider-wrap" key={label}>
@@ -132,10 +135,10 @@ export const ColorSliders = ({
                   <ColorChannelInput
                     label={label}
                     unit={units[index]}
-                    displayValue={significant(channels[index] * scale, digits)}
+                    displayValue={significant(channels[index], digits)}
                     digits={digits}
-                    max={model === "oklch" && index === 1 ? undefined : maximums[index] * scale}
-                    onChange={(next) => change(index, next / scale)}
+                    max={model === "oklch" && index === 1 ? undefined : maximums[index]}
+                    onChange={(next) => change(index, next)}
                   />
                 </div>
               );

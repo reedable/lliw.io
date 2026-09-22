@@ -135,10 +135,12 @@ const Combo = ({ background, foreground, label, hex }: ComboProps) => (
   >
     <span className={styles.comboLarge}>Aa</span>
     <span className={styles.comboSmall}>Small text sample</span>
-    <span className={styles.comboLabel}>
-      {label && <b>{label}</b>}
-      {hex}
-    </span>
+    {label && (
+      <span className={styles.comboLabel}>
+        <b>{label}</b>
+      </span>
+    )}
+    <span className={styles.comboLabel}>{hex}</span>
   </div>
 );
 

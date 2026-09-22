@@ -10,6 +10,30 @@ import {
 } from "./colorEditing";
 
 describe("precision used by the color editor", () => {
+  it("normalizes neutral HSL residue while preserving lightness and alpha", () => {
+    for (const value of ["oklch(0.666667 0 0 / 0.123456789)", "oklch(0.999999999999 0 0)"]) {
+      const original = new Color(value).to("hsl");
+      expect(colorChannels(value, "hsl")).toEqual([0, 0, original.coords[2], original.alpha]);
+    }
+    expect(formatChannels(colorChannels("oklch(0.666667 0 0 / 1)", "hsl"), "hsl")).toBe(
+      "hsla(0, 0%, 58.053%, 1)",
+    );
+  });
+
+  it("retains saturation for every adjacent-code 10-bit near-neutral", () => {
+    for (let code = 0; code <= 1023; code++) {
+      for (const delta of [-1, 1]) {
+        if (code + delta < 0 || code + delta > 1023) continue;
+        for (let axis = 0; axis < 3; axis++) {
+          const rgb = [code, code, code].map((v) => v / 1023);
+          rgb[axis] = (code + delta) / 1023;
+          const value = `color(srgb ${rgb.join(" ")})`;
+          expect(colorChannels(value, "hsl")[1]).toBeGreaterThan(0);
+        }
+      }
+    }
+  });
+
   it("rounds significant digits across magnitudes, not decimal places", () => {
     expect(significant(350.217391, 5)).toBe(350.22);
     expect(significant(0.000123456789, 5)).toBe(0.00012346);
